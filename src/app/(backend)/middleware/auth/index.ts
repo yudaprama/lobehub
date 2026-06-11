@@ -4,10 +4,10 @@ import { context as otContext } from '@lobechat/observability-otel/api';
 import type { ClientSecretPayload } from '@lobechat/types';
 import { ChatErrorType } from '@lobechat/types';
 
-import { auth } from '@/auth';
 import { getServerDB } from '@/database/core/db-adaptor';
 import type { LobeChatDatabase } from '@/database/type';
 import { LOBE_CHAT_OIDC_AUTH_HEADER } from '@/envs/auth';
+import { getKratosSession } from '@/libs/kratos/server-session';
 import { extractTraceContext, injectActiveTraceHeaders } from '@/libs/observability/traceparent';
 import { assertOIDCUserActive } from '@/libs/oidc-provider/access-control';
 import { validateOIDCJWT } from '@/libs/oidc-provider/jwt';
@@ -92,9 +92,7 @@ export const checkAuth =
         await assertOIDCUserActive(serverDB, userId);
       } else {
         // Better Auth session authentication (web)
-        const session = await auth.api.getSession({
-          headers: req.headers,
-        });
+        const session = await getKratosSession(req.headers);
 
         if (!session?.user?.id) {
           throw AgentRuntimeError.createError(ChatErrorType.Unauthorized);
