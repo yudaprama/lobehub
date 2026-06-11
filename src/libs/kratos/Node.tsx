@@ -11,7 +11,7 @@ import { NodeText } from './NodeText';
 
 interface NodeProps {
   disabled: boolean;
-  dispatchSubmit: (submitter: HTMLInputElement) => void;
+  dispatchSubmit: () => void;
   node: UiNode;
   setValue: (value: (v: any) => any) => void;
   value: any;

@@ -84,15 +84,15 @@ export function Flow({ flow, only, onSubmit, hideGlobalMessages = false, childre
 
       const form = e.currentTarget;
       const formData = new FormData(form);
-      let body: Values = Object.fromEntries(formData) as Values;
+      const formValues: Record<string, unknown> = Object.fromEntries(formData);
 
       const nativeEvent = e.nativeEvent as SubmitEvent;
       const submitter = (nativeEvent as any).submitter as HTMLInputElement;
       if (submitter) {
-        (body as any)[submitter.name] = submitter.value;
+        formValues[submitter.name] = submitter.value;
       }
 
-      body = { ...body, ...values };
+      const body = { ...formValues, ...values } as Values;
 
       setLoading(true);
       try {

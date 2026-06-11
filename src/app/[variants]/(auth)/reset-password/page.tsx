@@ -1,6 +1,6 @@
 'use client';
 
-import type { RecoveryFlow, UpdateRecoveryFlowBody } from '@ory/client';
+import type { RecoveryFlow } from '@ory/client';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
@@ -31,7 +31,7 @@ const RecoveryPage = () => {
   }, [flowId, router]);
 
   const onSubmit = useCallback(
-    async (values: UpdateRecoveryFlowBody) => {
+    async (values: any) => {
       await router.push(`/recovery?flow=${flow?.id}`, undefined as any);
 
       return kratos

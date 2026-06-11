@@ -7,6 +7,7 @@ import { useTranslation } from 'react-i18next';
 import useSWR from 'swr';
 
 import Loading from '@/components/Loading/BrandTextLoading';
+import { useKratosSession } from '@/libs/kratos/session';
 import { messengerService } from '@/services/messenger';
 
 import { type MessengerPlatform } from '../constants';
@@ -25,8 +26,8 @@ const MessengerVerifyPage = memo(() => {
   const imType = searchParams.get('im_type') ?? '';
   const platform = isSupportedPlatform(imType) ? imType : null;
 
-  const { data: session, isPending: sessionPending } = useSession();
-  const isSignedIn = !!session?.user;
+  const { session: kratosSession, loading: sessionPending } = useKratosSession();
+  const isSignedIn = !!kratosSession;
 
   // Used in the success state to deep-link the user back to the bot.
   const platformsSWR = useSWR('messenger:availablePlatforms', () =>
@@ -154,8 +155,8 @@ const MessengerVerifyPage = memo(() => {
         consumedToken?.platform ??
         platform),
   );
-  const lobeAccount = session?.user?.email ?? session?.user?.name ?? '';
-  const userAvatar = session?.user?.image ?? undefined;
+  const lobeAccount = kratosSession?.email ?? kratosSession?.name ?? '';
+  const userAvatar = kratosSession?.avatar_url ?? undefined;
 
   return (
     <Body

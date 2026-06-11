@@ -1,4 +1,3 @@
-import type { AxiosError } from 'axios';
 import type { Router } from 'next/router';
 import type { Dispatch, SetStateAction } from 'react';
 
@@ -29,12 +28,19 @@ function getFlowPath(flowType: FlowType): string {
   }
 }
 
+interface KratosFlowError {
+  response?: {
+    data?: FlowErrorResponse;
+    status?: number;
+  };
+}
+
 export function handleFlowError<S>(
   router: Router,
   flowType: FlowType,
   resetFlow: Dispatch<SetStateAction<S | undefined>>,
 ) {
-  return async (err: AxiosError<FlowErrorResponse>) => {
+  return async (err: KratosFlowError) => {
     const data = err.response?.data;
 
     switch (data?.error?.id) {
