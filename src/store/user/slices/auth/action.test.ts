@@ -16,23 +16,18 @@ vi.mock('@/libs/swr', async () => {
 });
 
 const mockKratos = vi.hoisted(() => ({
-  createBrowserLogoutFlow: vi.fn().mockResolvedValue({
-    data: { logout_token: 'test-token' },
-  }),
-  toSession: vi.fn().mockResolvedValue({
-    data: {
-      identity: {
-        id: 'kratos-user-1',
-        traits: { email: 'test@test.com', name: 'Test' },
-      },
-    },
-  }),
-  updateLogoutFlow: vi.fn().mockResolvedValue({}),
+  createBrowserLogoutFlow: vi.fn(),
+  toSession: vi.fn(),
+  updateLogoutFlow: vi.fn(),
 }));
+
+const mockFetch = vi.hoisted(() => vi.fn().mockResolvedValue({ ok: true }));
 
 vi.mock('@/libs/kratos/sdk', () => ({
   kratos: mockKratos,
 }));
+
+vi.stubGlobal('fetch', mockFetch);
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -44,6 +39,21 @@ afterEach(() => {
     authProviders: [],
     hasPasswordAccount: false,
   });
+});
+
+beforeEach(() => {
+  mockKratos.createBrowserLogoutFlow.mockResolvedValue({
+    data: { logout_token: 'test-token' },
+  });
+  mockKratos.toSession.mockResolvedValue({
+    data: {
+      identity: {
+        id: 'kratos-user-1',
+        traits: { email: 'test@test.com', name: 'Test' },
+      },
+    },
+  });
+  mockKratos.updateLogoutFlow.mockResolvedValue({ data: undefined });
 });
 
 describe('createAuthSlice', () => {
@@ -71,11 +81,9 @@ describe('createAuthSlice', () => {
         writable: true,
       });
 
-      const { result } = renderHook(() => useUserStore());
+      const store = useUserStore.getState();
 
-      await act(async () => {
-        await result.current.logout();
-      });
+      await store.logout();
 
       expect(mockKratos.createBrowserLogoutFlow).toHaveBeenCalled();
       expect(mockKratos.updateLogoutFlow).toHaveBeenCalledWith({ token: 'test-token' });

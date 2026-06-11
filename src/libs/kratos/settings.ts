@@ -1,4 +1,9 @@
-import type { UpdateSettingsFlowBody } from '@ory/client';
+import type {
+  SettingsFlow,
+  UiNode,
+  UiNodeInputAttributes,
+  UpdateSettingsFlowBody,
+} from '@ory/client';
 
 import { kratos } from './sdk';
 
@@ -17,7 +22,9 @@ export async function changeEmail(args: {
   newEmail: string;
 }): Promise<{ error?: { message?: string; statusText?: string } } | void> {
   try {
-    const { data: flow } = await kratos.createBrowserSettingsFlow(args.callbackURL);
+    const { data: flow } = await kratos.createBrowserSettingsFlow({
+      returnTo: args.callbackURL,
+    });
 
     const csrfToken = extractCsrfToken(flow);
     const body: UpdateSettingsFlowBody = {
@@ -32,7 +39,7 @@ export async function changeEmail(args: {
     });
 
     if (result.data.state === 'success') return;
-    const msg = result.data.messages?.uiMessages?.[0];
+    const msg = result.data.ui?.messages?.[0];
     if (msg) return { error: { message: msg.text } };
     return;
   } catch (err: any) {
@@ -65,11 +72,9 @@ export async function linkOidcProvider(args: {
   provider: string;
 }): Promise<void> {
   const returnTo = args.callbackURL || '/settings/profile';
-  const { data: flow } = await kratos.createBrowserSettingsFlow(returnTo);
+  const { data: flow } = await kratos.createBrowserSettingsFlow({ returnTo });
 
-  const csrfToken = extractCsrfToken(flow);
   const body: UpdateSettingsFlowBody = {
-    csrf_token: csrfToken,
     method: 'oidc',
     link: args.provider,
   };
@@ -100,11 +105,9 @@ export async function unlinkOidcProvider(args: {
   provider: string;
 }): Promise<void> {
   const returnTo = args.callbackURL || '/settings/profile';
-  const { data: flow } = await kratos.createBrowserSettingsFlow(returnTo);
+  const { data: flow } = await kratos.createBrowserSettingsFlow({ returnTo });
 
-  const csrfToken = extractCsrfToken(flow);
   const body: UpdateSettingsFlowBody = {
-    csrf_token: csrfToken,
     method: 'oidc',
     unlink: args.provider,
   };
@@ -115,9 +118,10 @@ export async function unlinkOidcProvider(args: {
   });
 }
 
-function extractCsrfToken(flow: {
-  ui?: { nodes?: Array<{ attributes?: { name?: string; value?: string } }> };
-}): string {
-  const csrfNode = flow.ui?.nodes?.find((n) => n.attributes?.name === 'csrf_token');
-  return csrfNode?.attributes?.value || '';
+function extractCsrfToken(flow: SettingsFlow): string {
+  const csrfNode = flow.ui?.nodes?.find((n: UiNode) => {
+    const attrs = n.attributes as UiNodeInputAttributes;
+    return attrs?.name === 'csrf_token';
+  });
+  return ((csrfNode?.attributes as UiNodeInputAttributes)?.value as string) || '';
 }
