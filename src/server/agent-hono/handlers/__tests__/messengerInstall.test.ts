@@ -2,17 +2,13 @@
 import type { Context } from 'hono';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { auth } from '@/auth';
+import { getKratosSession } from '@/libs/kratos/server-session';
 import { issueOAuthState } from '@/server/services/messenger/oauth/stateStore';
 
 import { messengerInstall } from '../messengerInstall';
 
-vi.mock('@/auth', () => ({
-  auth: {
-    api: {
-      getSession: vi.fn(),
-    },
-  },
+vi.mock('@/libs/kratos/server-session', () => ({
+  getKratosSession: vi.fn(),
 }));
 
 vi.mock('@/server/services/messenger/oauth/stateStore', () => ({
@@ -57,9 +53,8 @@ const buildContext = (platform: string, path: string): Context => {
 };
 
 beforeEach(() => {
-  vi.mocked(auth.api.getSession).mockResolvedValue({
-    session: {} as any,
-    user: { id: 'lobe-user-1' } as any,
+  vi.mocked(getKratosSession).mockResolvedValue({
+    user: { id: 'lobe-user-1', email: 'user@test.com', name: 'Test' },
   });
   vi.mocked(getMessengerSlackConfig).mockResolvedValue(VALID_SLACK_CONFIG);
   vi.mocked(getMessengerDiscordConfig).mockResolvedValue(VALID_DISCORD_CONFIG);
@@ -89,7 +84,7 @@ describe('GET /api/agent/messenger/:platform/install', () => {
 
   describe('slack', () => {
     it('redirects unauthenticated users to /signin with callbackUrl', async () => {
-      vi.mocked(auth.api.getSession).mockResolvedValue(null);
+      vi.mocked(getKratosSession).mockResolvedValue(null);
 
       const res = await messengerInstall(
         buildContext('slack', '/api/agent/messenger/slack/install'),

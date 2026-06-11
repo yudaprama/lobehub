@@ -91,7 +91,7 @@ export const checkAuth =
         userId = oidc.userId;
         await assertOIDCUserActive(serverDB, userId);
       } else {
-        // Better Auth session authentication (web)
+        // Kratos session authentication (web)
         const session = await getKratosSession(req.headers);
 
         if (!session?.user?.id) {

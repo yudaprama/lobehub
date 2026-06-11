@@ -28,12 +28,8 @@ vi.mock('@/utils/errorResponse', () => ({
   createErrorResponse: vi.fn(),
 }));
 
-vi.mock('@/auth', () => ({
-  auth: {
-    api: {
-      getSession: vi.fn().mockResolvedValue(null),
-    },
-  },
+vi.mock('@/libs/kratos/server-session', () => ({
+  getKratosSession: vi.fn().mockResolvedValue(null),
 }));
 
 vi.mock('@/database/core/db-adaptor', () => ({

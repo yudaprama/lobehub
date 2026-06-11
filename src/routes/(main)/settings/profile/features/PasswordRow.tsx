@@ -21,7 +21,7 @@ const PasswordRow = () => {
 
     try {
       setSending(true);
-      const { requestPasswordReset } = await import('@/libs/better-auth/auth-client');
+      const { requestPasswordReset } = await import('@/libs/kratos/settings');
       await requestPasswordReset({
         email: userProfile.email,
         redirectTo: `/reset-password?email=${encodeURIComponent(userProfile.email)}`,

@@ -2,7 +2,7 @@ import debug from 'debug';
 import type { Context } from 'hono';
 
 import { appEnv } from '@/envs/app';
-import { getKratosSession } from '@/libs/kratos/server-session';
+import { getKratosSession, type KratosServerSession } from '@/libs/kratos/server-session';
 import { issueOAuthState } from '@/server/services/messenger/oauth/stateStore';
 import { messengerPlatformRegistry } from '@/server/services/messenger/platforms';
 
@@ -43,7 +43,7 @@ export async function messengerInstall(c: Context): Promise<Response> {
   }
 
   // 2. Session check — unauth users get bounced through sign-in and back.
-  let session: Awaited<ReturnType<typeof auth.api.getSession>>;
+  let session: KratosServerSession | null;
   try {
     session = await getKratosSession(req.headers);
   } catch (error) {

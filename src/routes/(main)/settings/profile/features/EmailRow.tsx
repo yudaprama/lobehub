@@ -6,7 +6,7 @@ import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { message } from '@/components/AntdStaticMethods';
-import { changeEmail } from '@/libs/better-auth/auth-client';
+import { changeEmail } from '@/libs/kratos/settings';
 import { useUserStore } from '@/store/user';
 import { userProfileSelectors } from '@/store/user/selectors';
 
@@ -47,7 +47,7 @@ const EmailRow = () => {
       setSaving(true);
       setError('');
       const res = await changeEmail({ callbackURL: '/settings/profile', newEmail: trimmed });
-      if (res.error) {
+      if (res?.error) {
         setError(res.error.message ?? res.error.statusText ?? 'Failed to change email');
         return;
       }
