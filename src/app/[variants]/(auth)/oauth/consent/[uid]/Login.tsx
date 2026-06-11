@@ -5,7 +5,7 @@ import React, { memo } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import AuthCard from '@/features/AuthCard';
-import { useSession } from '@/libs/better-auth/auth-client';
+import { useKratosSession } from '@/libs/kratos/session';
 
 import OAuthApplicationLogo from './components/OAuthApplicationLogo';
 
@@ -23,10 +23,10 @@ const LoginConfirmClient = memo<LoginConfirmProps>(({ uid, clientMetadata }) => 
 
   const clientDisplayName = clientMetadata?.clientName || 'the application';
 
-  const { data: session, isPending } = useSession();
-  const isUserStateInit = !isPending && !!session;
-  const avatar = session?.user?.image || '';
-  const nickName = session?.user?.name || '';
+  const { session, loading } = useKratosSession();
+  const isUserStateInit = !loading && !!session;
+  const avatar = session?.avatar_url || '';
+  const nickName = session?.name || '';
 
   const [isLoading, setIsLoading] = React.useState(false);
 

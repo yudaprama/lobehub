@@ -7,7 +7,6 @@ import { useTranslation } from 'react-i18next';
 import useSWR from 'swr';
 
 import Loading from '@/components/Loading/BrandTextLoading';
-import { useSession } from '@/libs/better-auth/auth-client';
 import { messengerService } from '@/services/messenger';
 
 import { type MessengerPlatform } from '../constants';

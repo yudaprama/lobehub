@@ -11,9 +11,9 @@ export const generateMetadata = async (props: DynamicLayoutProps) => {
   const { t } = await translation('auth', locale);
 
   return metadataModule.generate({
-    description: t('signin.subtitle', { appName: BRANDING_NAME }),
-    title: t('signin.title'),
-    url: '/signin',
+    description: t('signup.subtitle', { appName: BRANDING_NAME }),
+    title: t('signup.title'),
+    url: '/signup',
   });
 };
 
