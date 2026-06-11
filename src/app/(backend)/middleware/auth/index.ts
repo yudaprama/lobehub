@@ -104,7 +104,7 @@ export const checkAuth =
       const params = await options.params;
       const oidcAuthorization = req.headers.get(LOBE_CHAT_OIDC_AUTH_HEADER);
 
-      // Only log OIDC auth failures — better-auth session failures are a common
+      // Only log OIDC auth failures — Kratos session failures are a common
       // baseline (unauthenticated browser hits) and would otherwise flood logs.
       if (oidcAuthorization) {
         const oidcDebugInfo = getOIDCClientDebugInfo(oidcAuthorization);

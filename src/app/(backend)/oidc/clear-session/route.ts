@@ -27,7 +27,7 @@ const log = debug('lobe-oidc:clear-session');
  */
 export async function POST() {
   try {
-    // Ensure the caller is authenticated (still has a valid better-auth session)
+    // Ensure the caller is authenticated (still has a valid Kratos session)
     const { userId } = await getUserAuth();
     if (!userId) {
       return NextResponse.json({ error: 'unauthorized' }, { status: 401 });

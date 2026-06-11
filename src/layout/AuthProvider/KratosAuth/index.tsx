@@ -2,7 +2,7 @@ import { type PropsWithChildren } from 'react';
 
 import UserUpdater from './UserUpdater';
 
-const BetterAuth = ({ children }: PropsWithChildren) => {
+const KratosAuth = ({ children }: PropsWithChildren) => {
   return (
     <>
       {children}
@@ -11,4 +11,4 @@ const BetterAuth = ({ children }: PropsWithChildren) => {
   );
 };
 
-export default BetterAuth;
+export default KratosAuth;
