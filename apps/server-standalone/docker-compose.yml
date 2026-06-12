@@ -1,0 +1,43 @@
+version: '3.8'
+
+services:
+  server:
+    build:
+      context: ../..
+      dockerfile: apps/server-standalone/Dockerfile
+    ports:
+      - '3210:3210'
+    environment:
+      - PORT=3210
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://lobehub:lobehub@postgres:5432/lobehub
+      - REDIS_URL=redis://redis:6379
+      - CORS_ORIGIN=*
+    depends_on:
+      - postgres
+      - redis
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      - POSTGRES_USER=lobehub
+      - POSTGRES_PASSWORD=lobehub
+      - POSTGRES_DB=lobehub
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - '5432:5432'
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    volumes:
+      - redis_data:/data
+    ports:
+      - '6379:6379'
+    restart: unless-stopped
+
+volumes:
+  postgres_data: {}
+  redis_data: {}
