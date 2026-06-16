@@ -7,10 +7,10 @@ describe('checkAuthMethod', () => {
     vi.clearAllMocks();
   });
 
-  it('should pass with valid Better Auth session', () => {
+  it('should pass with valid Kratos session', () => {
     expect(() =>
       checkAuthMethod({
-        betterAuthAuthorized: true,
+        kratosAuthorized: true,
       }),
     ).not.toThrow();
   });
@@ -19,10 +19,10 @@ describe('checkAuthMethod', () => {
     expect(() => checkAuthMethod({})).toThrow();
   });
 
-  it('should throw Unauthorized when betterAuthAuthorized is false', () => {
+  it('should throw Unauthorized when kratosAuthorized is false', () => {
     expect(() =>
       checkAuthMethod({
-        betterAuthAuthorized: false,
+        kratosAuthorized: false,
       }),
     ).toThrow();
   });

@@ -4,10 +4,10 @@ import { context as otContext } from '@lobechat/observability-otel/api';
 import type { ClientSecretPayload } from '@lobechat/types';
 import { ChatErrorType } from '@lobechat/types';
 
-import { auth } from '@/auth';
 import { getServerDB } from '@/database/core/db-adaptor';
 import type { LobeChatDatabase } from '@/database/type';
 import { LOBE_CHAT_OIDC_AUTH_HEADER } from '@/envs/auth';
+import { getKratosSession } from '@/libs/kratos/server-session';
 import { extractTraceContext, injectActiveTraceHeaders } from '@/libs/observability/traceparent';
 import { assertOIDCUserActive } from '@/libs/oidc-provider/access-control';
 import { validateOIDCJWT } from '@/libs/oidc-provider/jwt';
@@ -91,10 +91,8 @@ export const checkAuth =
         userId = oidc.userId;
         await assertOIDCUserActive(serverDB, userId);
       } else {
-        // Better Auth session authentication (web)
-        const session = await auth.api.getSession({
-          headers: req.headers,
-        });
+        // Kratos session authentication (web)
+        const session = await getKratosSession(req.headers);
 
         if (!session?.user?.id) {
           throw AgentRuntimeError.createError(ChatErrorType.Unauthorized);
@@ -106,7 +104,7 @@ export const checkAuth =
       const params = await options.params;
       const oidcAuthorization = req.headers.get(LOBE_CHAT_OIDC_AUTH_HEADER);
 
-      // Only log OIDC auth failures — better-auth session failures are a common
+      // Only log OIDC auth failures — Kratos session failures are a common
       // baseline (unauthenticated browser hits) and would otherwise flood logs.
       if (oidcAuthorization) {
         const oidcDebugInfo = getOIDCClientDebugInfo(oidcAuthorization);
