@@ -5,11 +5,43 @@
 #
 # Usage: ./scripts/daily-sync.sh
 # Cron:  0 6 * * * /path/to/repo/scripts/daily-sync.sh
+#
+# This script can be run from any branch. It checks out $BRANCH (canary)
+# at the start, syncs it with $UPSTREAM/$BRANCH, type-checks, and pushes
+# the result to $PERSONAL/$BRANCH. The original branch is restored at the
+# end so your working state is unchanged.
 set -euo pipefail
 
 BRANCH="${BRANCH:-canary}"
 UPSTREAM="${UPSTREAM_REMOTE:-origin}"
 PERSONAL="${PERSONAL_REMOTE:-personal}"
+
+# Remember the branch we started on so we can restore it at the end.
+# In a detached HEAD (rare for this script) the current branch is empty
+# and we just stay on $BRANCH for the rest of the script.
+ORIGINAL_BRANCH=$(git symbolic-ref --quiet --short HEAD 2>/dev/null || echo "")
+
+restore_branch() {
+  if [[ -n "$ORIGINAL_BRANCH" && "$ORIGINAL_BRANCH" != "$BRANCH" ]]; then
+    echo "==> Restoring original branch $ORIGINAL_BRANCH..."
+    git checkout "$ORIGINAL_BRANCH" --quiet
+  fi
+}
+trap restore_branch EXIT
+
+# Refuse to run with a dirty working tree on the original branch —
+# `git checkout` below would carry those changes into $BRANCH and
+# silently mix them into the rebase.
+if [[ -n "$ORIGINAL_BRANCH" && "$ORIGINAL_BRANCH" != "$BRANCH" ]]; then
+  if ! git diff --quiet --ignore-submodules HEAD 2>/dev/null; then
+    echo "ERROR: Working tree has uncommitted changes."
+    echo "Commit or stash them first, then re-run."
+    exit 1
+  fi
+fi
+
+echo "==> Switching to $BRANCH..."
+git checkout "$BRANCH" --quiet
 
 echo "==> Fetching $UPSTREAM/$BRANCH..."
 git fetch "$UPSTREAM" "$BRANCH" --quiet
