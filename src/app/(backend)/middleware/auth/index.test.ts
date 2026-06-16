@@ -28,12 +28,8 @@ vi.mock('@/utils/errorResponse', () => ({
   createErrorResponse: vi.fn(),
 }));
 
-vi.mock('@/auth', () => ({
-  auth: {
-    api: {
-      getSession: vi.fn().mockResolvedValue(null),
-    },
-  },
+vi.mock('@/libs/kratos/server-session', () => ({
+  getKratosSession: vi.fn().mockResolvedValue(null),
 }));
 
 vi.mock('@/database/core/db-adaptor', () => ({
@@ -205,7 +201,7 @@ describe('checkAuth', () => {
     });
   });
 
-  it('should not log OIDC auth info for better-auth session failures', async () => {
+  it('should not log OIDC auth info for Kratos session failures', async () => {
     await checkAuth(mockHandler)(mockRequest, mockOptions);
 
     expect(consoleInfoSpy).not.toHaveBeenCalled();
