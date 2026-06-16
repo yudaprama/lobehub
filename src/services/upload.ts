@@ -52,6 +52,19 @@ function getKratosSessionToken(): string {
 }
 
 class UploadService {
+  /**
+   * @deprecated Use `uploadFileToS3` — kept as a shim for callers (e.g.
+   * `ragEval.ts`, `eval/DatasetImportModal`) that still reference the
+   * old S3-server pre-sign flow. Internally just calls uploadFileToS3.
+   */
+  uploadToServerS3 = async (
+    file: File,
+    options: UploadFileToS3Options,
+  ): Promise<FileMetadata> => {
+    const { data } = await this.uploadFileToS3(file, options);
+    return data;
+  };
+
   uploadFileToS3 = async (
     file: File,
     { onProgress, directory, pathname, abortController }: UploadFileToS3Options,
