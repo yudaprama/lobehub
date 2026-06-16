@@ -33,3 +33,18 @@
 *.mp3 binary
 *.zip binary
 *.gz binary
+
+# === Fork custom: Kratos auth area — keep our version on merge/rebase ===
+src/libs/kratos/                        merge=ours
+src/app/[variants]/(auth)/              merge=ours
+src/layout/AuthProvider/                merge=ours
+src/app/(backend)/middleware/auth/      merge=ours
+src/app/(backend)/api/auth/             merge=ours
+
+# === Fork custom: AList file storage — keep our version on merge/rebase ===
+src/libs/alist/                         merge=ours
+src/services/file/                      merge=ours
+src/services/upload.ts                  merge=ours
+
+# === Fork custom: Standalone server — no upstream equivalent ===
+apps/server-standalone/                 merge=ours
