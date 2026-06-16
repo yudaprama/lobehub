@@ -2,6 +2,74 @@
 
 Guidelines for using AI coding agents in this LobeHub repository.
 
+## Fork-specific rules (READ FIRST)
+
+**This is `yudaprama/lobehub`, a fork of upstream `lobehub/lobehub`.**
+The fork carries custom integrations (Kratos auth, AList file storage,
+standalone server, pREST Tier 1/2). Read and follow these rules before
+any git operation.
+
+### Branch layout (authoritative, Jun 16 2026)
+
+| Branch                        | Role                                                                                                                                                                                             | Remote                             |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------- |
+| `canary`                      | Mirror of upstream `lobehub/lobehub:canary`. Updated by `scripts/daily-sync.sh`. **Do not commit fork work here.**                                                                               | `personal/canary`                  |
+| `main`                        | Fork plumbing only: `.gitattributes` `merge=ours` driver, `scripts/daily-sync.sh`, disabled pg_search migrations, migration 0111 (FTS). **Does NOT contain Kratos or AList migration code yet.** | `personal/main`                    |
+| `feat/kratos-auth`            | **Active.** 19 commits ahead of `main`. Full Kratos auth migration (flows, settings, session helper, Better Auth removal, `apps/server-standalone`).                                             | `personal/feat/kratos-auth`        |
+| `feat/alist-file-storage`     | **Active.** 21 commits ahead of `main`. Superset of `feat/kratos-auth` plus AList upload pipeline.                                                                                               | `personal/feat/alist-file-storage` |
+| ~~`feat/kratos-auth-backup`~~ | **Does NOT exist.** If you see it referenced in old notes, ignore — it was a temporary safety-net branch that has been deleted.                                                                  | n/a                                |
+
+### Git rules
+
+1. **NEVER force-push `feat/*` branches.** They contain ongoing
+   migration work. Only `personal/main` and `personal/canary` may be
+   force-pushed (and only via `--force-with-lease`).
+2. **NEVER delete `feat/kratos-auth` or `feat/alist-file-storage`.**
+   Their commits have not been merged into `main` yet. They are not
+   "leftover" — deleting them loses the Kratos/AList migration.
+3. **Do not trust older docs claiming `feat/alist-file-storage` is
+   "merged via PR #1"** — that was an incorrect claim. Both feat
+   branches are still on their own refs.
+4. **`main` is rebased onto a newer `origin/canary` than the feat
+   branches** (128 commits of merge drift). Merging a feat branch into
+   `main` requires rebasing the feat branch onto current
+   `origin/canary` first, or resolving drift manually.
+5. **`scripts/daily-sync.sh` is the only mechanism for syncing
+   `canary`** from upstream. It auto-checks out `canary`, rebases,
+   type-checks, and pushes to `personal/canary`. It can be run from any
+   branch — the trap handler restores the caller's branch.
+6. **`origin` = upstream `lobehub/lobehub`.** `personal` =
+   `yudaprama/lobehub`. Pushes go to `personal/*` only.
+
+### Database rules
+
+1. **The lobehub content DB is on Supabase**
+   (`biyvcvoxtvezcpkjidai`), not a local
+   `paradedb/paradedb:latest-pg17` image.
+2. **ParadeDB `pg_search` extension is NOT available on this Supabase
+   project.** Migrations `0090_enable_pg_search.sql` and
+   `0093_add_bm25_indexes_with_icu.sql` are disabled (commented out).
+3. **Postgres native FTS is used instead.** Migration
+   `0111_add_postgres_fts.sql` adds 14 `*_tsv` generated columns + GIN
+   indexes. Any code that previously called `paradedb.match()` /
+   `paradedb.score()` / the `@@@` operator must use `to_tsquery()` +
+   `ts_rank()` against the `*_tsv` columns instead.
+4. **Migrations 0100–0110 are upstream Drizzle migrations** that
+   arrived after the initial fork-DB setup. They have not been applied
+   to the Supabase project yet — run
+   `bun run scripts/migrateServerDB/index.ts` with
+   `DATABASE_DRIVER=node MIGRATION_DB=1 KEY_VAULTS_SECRET=... NODE_TLS_REJECT_UNAUTHORIZED=0`
+   to apply them.
+
+### When in doubt
+
+- Check branch state with `git rev-list --count main..<branch>` before
+  claiming a branch is "merged", "obsolete", or "safe to delete".
+- Check actual commit existence with `git log --oneline <sha>` before
+  referencing a commit hash from docs (the doc may be stale).
+
+---
+
 ## Tech Stack
 
 - Next.js 16 + React 19 + TypeScript
