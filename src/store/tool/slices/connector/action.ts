@@ -1,5 +1,5 @@
 import type { ConnectorToolPermission } from '@/database/schemas';
-import { lambdaClient } from '@/libs/trpc/client';
+import { connectorService } from '@/services/connector';
 import type { StoreSetter } from '@/store/types';
 
 import type { ToolStore } from '../../store';
@@ -18,25 +18,20 @@ export class ConnectorActionImpl {
   }
 
   fetchConnectors = async (): Promise<void> => {
-    const data = await lambdaClient.connector.list.query();
+    const data = await connectorService.list();
     this.#set({ connectors: data as any, isConnectorsInit: true }, false, 'fetchConnectors');
   };
 
-  /**
-   * Fetch the connector with its decrypted user-set credentials for the edit
-   * form. Does NOT update the store — caller uses the result directly.
-   * Machine-managed OAuth tokens are excluded server-side.
-   */
   getConnectorForEdit = async (id: string) => {
-    return lambdaClient.connector.getForEdit.query({ id });
+    return connectorService.getForEdit(id);
   };
 
   createConnector = async (
-    params: Parameters<typeof lambdaClient.connector.create.mutate>[0],
+    params: Parameters<typeof connectorService.create>[0],
   ): Promise<string> => {
     this.#set({ connectorCreating: true }, false, 'createConnector/start');
     try {
-      const created = await lambdaClient.connector.create.mutate(params);
+      const created = await connectorService.create(params);
       await this.fetchConnectors();
       return created.id;
     } finally {
@@ -44,18 +39,12 @@ export class ConnectorActionImpl {
     }
   };
 
-  /**
-   * Begin the OAuth authorization-code flow for a custom connector and return
-   * the authorize URL for the caller to open in a popup. Resolves the client
-   * via pre-registration or DCR on the server.
-   */
   startConnectorOAuth = async (id: string): Promise<string> => {
-    const { authorizationUrl } = await lambdaClient.connector.startOAuth.mutate({ id });
-    return authorizationUrl;
+    return connectorService.startOAuth(id);
   };
 
   deleteConnector = async (id: string): Promise<void> => {
-    await lambdaClient.connector.delete.mutate({ id });
+    await connectorService.delete(id);
     await this.fetchConnectors();
   };
 
@@ -76,7 +65,7 @@ export class ConnectorActionImpl {
       };
     },
   ): Promise<void> => {
-    await lambdaClient.connector.update.mutate({ id, patch: patch as any });
+    await connectorService.update(id, patch as any);
     await this.fetchConnectors();
   };
 
@@ -87,7 +76,7 @@ export class ConnectorActionImpl {
       'syncConnectorTools/start',
     );
     try {
-      await lambdaClient.connector.syncTools.mutate({ id });
+      await connectorService.syncTools(id);
       await this.fetchConnectors();
     } finally {
       this.#set(
@@ -99,55 +88,34 @@ export class ConnectorActionImpl {
   };
 
   disconnectConnector = async (id: string): Promise<void> => {
-    await lambdaClient.connector.update.mutate({
-      id,
-      patch: { isEnabled: false },
-    });
+    await connectorService.update(id, { isEnabled: false });
     await this.fetchConnectors();
   };
 
-  /**
-   * Reset all tool permissions for a connector back to 'auto' (fully open).
-   */
   resetConnectorPermissions = async (id: string): Promise<void> => {
-    await lambdaClient.connector.resetPermissions.mutate({ id });
+    await connectorService.resetPermissions(id);
     await this.fetchConnectors();
   };
 
-  /**
-   * Sync tools from a client-provided list (for Lobehub OAuth skills / Composio
-   * that already have their tool list available on the client side).
-   * Idempotent — safe to call whenever the detail panel opens.
-   */
   syncToolsFromClient = async (params: {
     identifier: string;
     name: string;
     sourceType: 'builtin' | 'custom' | 'marketplace';
     tools: Array<{ description?: string; inputSchema?: Record<string, unknown>; toolName: string }>;
   }): Promise<string> => {
-    const result = await lambdaClient.connector.syncToolsFromClient.mutate(params);
+    const result = await connectorService.syncToolsFromClient(params);
     await this.fetchConnectors();
     return result.connectorId;
   };
 
-  /**
-   * Bootstrap connector entry for a builtin tool (reads manifest server-side).
-   * Idempotent — safe to call whenever the detail panel opens.
-   * Returns the connectorId.
-   */
   syncBuiltinTool = async (identifier: string): Promise<string> => {
-    const result = await lambdaClient.connector.syncBuiltinTool.mutate({ identifier });
+    const result = await connectorService.syncBuiltinTool(identifier);
     await this.fetchConnectors();
     return result.connectorId;
   };
 
-  /**
-   * Bootstrap connector entry for an installed marketplace plugin.
-   * Idempotent — safe to call whenever the detail panel opens.
-   * Returns the connectorId.
-   */
   syncPluginTools = async (identifier: string): Promise<string> => {
-    const result = await lambdaClient.connector.syncPluginTools.mutate({ identifier });
+    const result = await connectorService.syncPluginTools(identifier);
     await this.fetchConnectors();
     return result.connectorId;
   };
@@ -169,7 +137,7 @@ export class ConnectorActionImpl {
     );
 
     try {
-      await lambdaClient.connector.updateToolPermission.mutate({ permission, toolId });
+      await connectorService.updateToolPermission(toolId, permission);
     } catch {
       // Roll back on error
       await this.fetchConnectors();
