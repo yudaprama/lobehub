@@ -183,6 +183,14 @@ export class TopicService {
     await client.update('lobehub', 'public', 'topics', { id }, patch);
   };
 
+  /**
+   * Tier 3 — server-side joins topic + recent messages with a summary
+   * fallback. No single pREST table/template covers this; stays on lambdaClient.
+   */
+  getTopicContext = (topicId: string): Promise<{ content: string; success: boolean }> => {
+    return lambdaClient.topic.getTopicContext.query({ topicId });
+  };
+
   updateTopicMetadata = (id: string, metadata: UpdateTopicMetadataInput) => {
     return lambdaClient.topic.updateTopicMetadata.mutate({ id, metadata });
   };
