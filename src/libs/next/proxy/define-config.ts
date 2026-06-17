@@ -49,7 +49,7 @@ export function defineConfig() {
   // `/oauth/connector` is a backend route handler (custom connector OAuth callback);
   // the rest of `/oauth/*` (e.g. /oauth/callback/success) are SPA pages, so scope
   // the passthrough to the connector subtree only.
-  const backendApiEndpoints = ['/api', '/trpc', '/webapi', '/oidc', '/oauth/connector'];
+  const backendApiEndpoints = ['/api', '/trpc', '/webapi', '/oidc', '/oauth/connector', '/prest'];
 
   const defaultMiddleware = (request: NextRequest) => {
     const url = new URL(request.url);
