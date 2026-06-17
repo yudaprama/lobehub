@@ -24,6 +24,9 @@ export const getFileConfig = () => {
       // AList file storage (fork)
       NEXT_PUBLIC_ALIST_URL: z.string().optional(),
       NEXT_PUBLIC_KRATOS_PUBLIC_URL: z.string().optional(),
+
+      // pREST (PostgreSQL REST API)
+      NEXT_PUBLIC_PREST_URL: z.string().optional(),
     },
     runtimeEnv: {
       CHUNKS_AUTO_EMBEDDING: process.env.CHUNKS_AUTO_EMBEDDING !== '0',
@@ -35,6 +38,7 @@ export const getFileConfig = () => {
       NEXT_PUBLIC_S3_FILE_PATH: process.env.NEXT_PUBLIC_S3_FILE_PATH || DEFAULT_S3_FILE_PATH,
       NEXT_PUBLIC_ALIST_URL: process.env.NEXT_PUBLIC_ALIST_URL,
       NEXT_PUBLIC_KRATOS_PUBLIC_URL: process.env.NEXT_PUBLIC_KRATOS_PUBLIC_URL,
+      NEXT_PUBLIC_PREST_URL: process.env.NEXT_PUBLIC_PREST_URL,
 
       S3_ACCESS_KEY_ID: process.env.S3_ACCESS_KEY_ID,
       S3_BUCKET: process.env.S3_BUCKET,
