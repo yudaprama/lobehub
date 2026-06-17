@@ -48,7 +48,7 @@ export const globalFiles = pgTable(
   {
     hashId: varchar('hash_id', { length: 64 }).primaryKey(),
     fileType: varchar('file_type', { length: 255 }).notNull(),
-    size: integer('size').notNull(),
+    size: bigint('size', { mode: 'number' }).notNull(),
     url: text('url').notNull(),
     metadata: jsonb('metadata'),
     creator: text('creator')
@@ -171,7 +171,7 @@ export const files = pgTable(
       onDelete: 'no action',
     }),
     name: text('name').notNull(),
-    size: integer('size').notNull(),
+    size: bigint('size', { mode: 'number' }).notNull(),
     url: text('url').notNull(),
     source: text('source').$type<FileSource>(),
 
