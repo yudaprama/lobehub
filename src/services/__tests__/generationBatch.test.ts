@@ -1,16 +1,20 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { lambdaClient } from '@/libs/trpc/client';
-
 import { generationBatchService } from '../generationBatch';
 
-vi.mock('@/libs/trpc/client', () => ({
-  lambdaClient: {
-    generationBatch: {
-      getGenerationBatches: { query: vi.fn() },
-      deleteGenerationBatch: { mutate: vi.fn() },
-    },
-  },
+const prestMock = vi.hoisted(() => ({
+  query: vi.fn(() => Promise.resolve([])),
+  delete: vi.fn(() => Promise.resolve([])),
+}));
+
+vi.mock('@/libs/prest/client', () => ({
+  getPrestClient: vi.fn(() => Promise.resolve(prestMock)),
+  getLobehubClient: vi.fn(() =>
+    Promise.resolve({
+      client: prestMock,
+      delete: prestMock.delete,
+    }),
+  ),
 }));
 
 describe('GenerationBatchService', () => {
@@ -18,19 +22,21 @@ describe('GenerationBatchService', () => {
     vi.clearAllMocks();
   });
 
-  it('getGenerationBatches should call lambdaClient with correct params', async () => {
+  it('getGenerationBatches should call Tier 2 template with topicId', async () => {
     const topicId = 'test-topic-id';
 
     await generationBatchService.getGenerationBatches(topicId);
 
-    expect(lambdaClient.generationBatch.getGenerationBatches.query).toBeCalledWith({ topicId });
+    expect(prestMock.query).toHaveBeenCalledWith('lobehub', 'generationBatchesWithGenerations', {
+      topicId,
+    });
   });
 
-  it('deleteGenerationBatch should call lambdaClient with correct params', async () => {
+  it('deleteGenerationBatch should call prest delete', async () => {
     const batchId = 'test-batch-id';
 
     await generationBatchService.deleteGenerationBatch(batchId);
 
-    expect(lambdaClient.generationBatch.deleteGenerationBatch.mutate).toBeCalledWith({ batchId });
+    expect(prestMock.delete).toHaveBeenCalled();
   });
 });

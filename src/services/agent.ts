@@ -1,6 +1,7 @@
 import { type AgentItem, type AgentRankItem, type LobeAgentConfig } from '@lobechat/types';
 import { type PartialDeep } from 'type-fest';
 
+import { getPrestClient } from '@/libs/prest/client';
 import { lambdaClient } from '@/libs/trpc/client';
 
 export const AVAILABLE_AGENTS_CONTEXT_LIMIT = 10;
@@ -212,7 +213,12 @@ class AgentService {
   };
 
   /**
-   * Remove an agent and its associated session
+   * Remove an agent.
+   *
+   * Stays on lambdaClient — the BFF also removes the linked session row
+   * (sessions.id = agents.id) and reshapes the session list response.
+   * pREST FK cascade could handle the row deletion, but the response
+   * shape contract requires the BFF.
    */
   removeAgent = async (agentId: string) => {
     return lambdaClient.agent.removeAgent.mutate({ agentId });
@@ -221,27 +227,53 @@ class AgentService {
   /**
    * Query non-virtual agents with optional keyword filter.
    * Returns agents with minimal info (id, title, description, avatar, backgroundColor).
+   *
+   * Tier 2 stored SQL template joins topics for topic_count + last_active_at.
+   * The `virtual = false` filter is encoded in the template's WHERE clause.
    */
   queryAgents = async (params?: {
     keyword?: string;
     limit?: number;
     offset?: number;
   }): Promise<AvailableAgentItem[]> => {
-    return lambdaClient.agent.queryAgents.query(params);
+    const client = await getPrestClient();
+
+    const queryParams: Record<string, string | number | boolean> = {};
+    if (params?.keyword) queryParams.keyword = params.keyword;
+    if (params?.limit) queryParams.size = params.limit;
+    if (params?.offset) queryParams.page = Math.floor(params.offset / (params.limit ?? 20)) + 1;
+
+    return client.query<AvailableAgentItem>('lobehub', 'agentsListWithStats', queryParams);
   };
 
   /**
    * Count non-virtual agents with optional keyword filter, matching queryAgents conditions.
+   *
+   * Tier 1 count when no keyword. Falls back to BFF for keyword searches
+   * since the Tier 2 template doesn't expose a count endpoint.
    */
   countAgents = async (params?: { keyword?: string }) => {
-    return lambdaClient.agent.countAgents.query(params);
+    if (params?.keyword) {
+      return lambdaClient.agent.countAgents.query(params);
+    }
+
+    const client = await getPrestClient();
+    const rows = await client.select<{ count: number }[]>('lobehub', 'public', 'agents', {
+      count: true,
+      where: { virtual: false },
+    });
+    const row = Array.isArray(rows) ? rows[0] : undefined;
+    return row?.count ?? 0;
   };
 
   /**
-   * Pin or unpin an agent
+   * Pin or unpin an agent.
+   *
+   * Tier 1 update on `agents.pinned`.
    */
   updateAgentPinned = async (agentId: string, pinned: boolean) => {
-    return lambdaClient.agent.updateAgentPinned.mutate({ id: agentId, pinned });
+    const client = await getPrestClient();
+    await client.update('lobehub', 'public', 'agents', { id: agentId }, { pinned });
   };
 
   /**

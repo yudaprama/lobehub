@@ -12,11 +12,17 @@ const mockLambdaClient = vi.hoisted(() => ({
     makeUserOnboarded: { mutate: vi.fn() },
     updateAvatar: { mutate: vi.fn() },
     updateFullName: { mutate: vi.fn() },
-    updatePreference: { mutate: vi.fn() },
-    updateGuide: { mutate: vi.fn() },
     updateSettings: { mutate: vi.fn() },
     resetSettings: { mutate: vi.fn() },
   },
+}));
+
+const prestMock = vi.hoisted(() => ({
+  update: vi.fn(),
+}));
+
+vi.mock('@/libs/prest/client', () => ({
+  getPrestClient: vi.fn(() => Promise.resolve(prestMock)),
 }));
 
 vi.mock('@/libs/trpc/client', () => ({
@@ -97,24 +103,36 @@ describe('UserService', () => {
   });
 
   describe('updatePreference', () => {
-    it('should call lambdaClient.user.updatePreference.mutate with preference object', async () => {
+    it('should call prest.update on user_settings with preference object', async () => {
       const preference = { hideSyncAlert: true };
-      mockLambdaClient.user.updatePreference.mutate.mockResolvedValueOnce({ success: true });
+      prestMock.update.mockResolvedValueOnce([]);
 
       await userService.updatePreference(preference);
 
-      expect(mockLambdaClient.user.updatePreference.mutate).toHaveBeenCalledWith(preference);
+      expect(prestMock.update).toHaveBeenCalledWith(
+        'lobehub',
+        'public',
+        'user_settings',
+        {},
+        { preference },
+      );
     });
   });
 
   describe('updateGuide', () => {
-    it('should call lambdaClient.user.updateGuide.mutate with guide object', async () => {
+    it('should call prest.update on user_settings with guide object', async () => {
       const guide = { moveSettingsToAvatar: true };
-      mockLambdaClient.user.updateGuide.mutate.mockResolvedValueOnce({ success: true });
+      prestMock.update.mockResolvedValueOnce([]);
 
       await userService.updateGuide(guide);
 
-      expect(mockLambdaClient.user.updateGuide.mutate).toHaveBeenCalledWith(guide);
+      expect(prestMock.update).toHaveBeenCalledWith(
+        'lobehub',
+        'public',
+        'user_settings',
+        {},
+        { guide },
+      );
     });
   });
 
