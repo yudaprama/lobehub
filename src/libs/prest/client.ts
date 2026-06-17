@@ -2,6 +2,8 @@ import { PrestClient } from 'prest-js-sdk';
 
 import { fileEnv } from '@/envs/file';
 
+import type { LobehubTables } from './tables';
+
 const DEFAULT_PREST_URL = 'http://localhost:3000';
 const DEFAULT_KRATOS_URL = 'http://localhost:4433';
 
@@ -50,4 +52,21 @@ export function getPrestClient(): Promise<PrestClient> {
   return clientPromise;
 }
 
-export { PrestApiError, PrestClient, tsquery } from 'prest-js-sdk';
+/**
+ * Pre-bound typed client for `lobehub/public`.
+ *
+ * Convenience wrapper that avoids repeating `'lobehub', 'public'` and
+ * the generic type parameters on every call. Table columns are inferred
+ * from `LobehubTables`.
+ *
+ * @example
+ *   const db = await getLobehubClient();
+ *   const topics = await db.select('topics', { where: { agent_id: 'a1' } });
+ *   // topics is LobehubTables['topics']['select'][]
+ */
+export async function getLobehubClient() {
+  const client = await getPrestClient();
+  return client.forSchema<LobehubTables>('lobehub', 'public');
+}
+
+export { PrestApiError, PrestClient, tsquery, TypedPrestClient } from 'prest-js-sdk';

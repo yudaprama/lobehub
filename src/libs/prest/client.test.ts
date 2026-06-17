@@ -34,7 +34,8 @@ describe('getPrestClient', () => {
     expect(prestFactoryMock).toHaveBeenCalledWith('http://localhost:4433', 'http://localhost:3000');
   });
 
-  it('returns null when NEXT_PUBLIC_PREST_URL is unset', async () => {
+  it('throws when Kratos session is missing', async () => {
+    // Reset module state for a clean test
     vi.resetModules();
     vi.doMock('@/envs/file', () => ({
       fileEnv: {
@@ -45,10 +46,12 @@ describe('getPrestClient', () => {
     const { getPrestClient: getPrestClientFresh } = await import('./client');
     prestFactoryMock.mockClear();
 
-    const result = await getPrestClientFresh();
+    // With big-bang getPrestClient always uses DEFAULT_PREST_URL if env is
+    // unset, but fromKratosSession returns null if no Kratos cookie exists
+    // (simulated by the hoisted mock returning null).
+    prestFactoryMock.mockResolvedValue(null);
 
-    expect(result).toBeNull();
-    expect(prestFactoryMock).not.toHaveBeenCalled();
+    await expect(getPrestClientFresh()).rejects.toThrow('No Kratos session');
 
     vi.doUnmock('@/envs/file');
     vi.resetModules();
