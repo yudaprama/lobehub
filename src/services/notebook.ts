@@ -1,6 +1,7 @@
 import { type DocumentType } from '@lobechat/builtin-tool-notebook';
 import type { AGENT_PLAN_FILE_TYPE } from '@lobechat/const';
 
+import { getPrestClient } from '@/libs/prest/client';
 import { lambdaClient } from '@/libs/trpc/client';
 
 type ExtendedDocumentType = DocumentType | typeof AGENT_PLAN_FILE_TYPE;
@@ -40,7 +41,12 @@ class NotebookService {
   };
 
   getDocument = async (id: string) => {
-    return lambdaClient.notebook.getDocument.query({ id });
+    const client = await getPrestClient();
+    const rows = await client.select('lobehub', 'public', 'documents', {
+      where: { id },
+      size: 1,
+    });
+    return Array.isArray(rows) ? rows[0] : undefined;
   };
 
   listDocuments = async (params: ListDocumentsParams) => {

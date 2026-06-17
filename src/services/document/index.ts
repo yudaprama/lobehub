@@ -1,6 +1,7 @@
 import { CUSTOM_DOCUMENT_FILE_TYPE } from '@lobechat/const';
 import { type DocumentItem } from '@lobechat/database/schemas';
 
+import { getPrestClient } from '@/libs/prest/client';
 import { lambdaClient } from '@/libs/trpc/client';
 import type {
   CompareHistoryItemsInput,
@@ -140,13 +141,56 @@ export class DocumentService {
     pageSize?: number;
     sourceTypes?: string[];
   }): Promise<{ items: DocumentItem[]; total: number }> {
-    return lambdaClient.document.queryDocuments.query(params);
+    const client = await getPrestClient();
+
+    const where: Record<string, unknown> = {};
+    if (params?.fileTypes?.length) where.file_type = { in: params.fileTypes };
+    if (params?.sourceTypes?.length) where.source_type = { in: params.sourceTypes };
+
+    const page = (params?.current ?? 0) + 1;
+    const size = params?.pageSize ?? 20;
+
+    const [items, countRows] = await Promise.all([
+      client.select<DocumentItem>('lobehub', 'public', 'documents', {
+        order: ['updated_at:desc'],
+        page,
+        size,
+        where: Object.keys(where).length ? where : undefined,
+      }),
+      client.select<{ count: number }[]>('lobehub', 'public', 'documents', {
+        count: true,
+        where: Object.keys(where).length ? where : undefined,
+      }),
+    ]);
+
+    const total = (Array.isArray(countRows) ? countRows[0]?.count : 0) ?? 0;
+
+    return { items, total };
   }
 
   async listDocumentHistory(params: ListDocumentHistoryParams): Promise<ListHistoryOutput> {
-    const result = await lambdaClient.document.listDocumentHistory.query(params);
+    const client = await getPrestClient();
 
-    return serializeHistoryList(result);
+    const queryParams: Record<string, string> = {
+      documentId: params.documentId,
+      limit: String(params.limit ?? 20),
+    };
+    if (params.beforeSavedAt) queryParams.beforeSavedAt = params.beforeSavedAt;
+    if (params.beforeId) queryParams.beforeId = params.beforeId;
+
+    const rows = await client.query<{
+      id: string;
+      documentId: string;
+      editorData: any;
+      saveSource: string;
+      savedAt: string;
+    }>('lobehub', 'documentsWithHistory', queryParams);
+
+    const items = rows as unknown as ListHistoryOutput['items'];
+    const lastItem = items.at(-1);
+    const nextBeforeSavedAt = lastItem?.savedAt ?? undefined;
+
+    return { items, nextBeforeSavedAt };
   }
 
   async getDocumentHistoryItem(
@@ -197,12 +241,36 @@ export class DocumentService {
     if (uniqueKey) {
       // Use fixed key so switching documents cancels the previous request
       // This prevents race conditions where old document's data overwrites new document's editor
-      return abortableRequest.execute(uniqueKey, async (signal) =>
-        lambdaClient.document.getDocumentById.query({ id }, { signal }),
-      );
+      return abortableRequest.execute(uniqueKey, async (signal) => {
+        return new Promise<DocumentItem | undefined>((resolve, reject) => {
+          const onAbort = () => reject(new DOMException('Aborted', 'AbortError'));
+          if (signal?.aborted) {
+            reject(new DOMException('Aborted', 'AbortError'));
+            return;
+          }
+          signal?.addEventListener('abort', onAbort);
+
+          getPrestClient()
+            .then((client) =>
+              client.select<DocumentItem>('lobehub', 'public', 'documents', {
+                where: { id },
+                size: 1,
+              }),
+            )
+            .then((rows) => {
+              signal?.removeEventListener('abort', onAbort);
+              resolve(Array.isArray(rows) ? rows[0] : undefined);
+            }, reject);
+        });
+      });
     }
 
-    return lambdaClient.document.getDocumentById.query({ id });
+    const client = await getPrestClient();
+    const rows = await client.select<DocumentItem>('lobehub', 'public', 'documents', {
+      where: { id },
+      size: 1,
+    });
+    return Array.isArray(rows) ? rows[0] : undefined;
   }
 
   async deleteDocument(id: string): Promise<void> {
