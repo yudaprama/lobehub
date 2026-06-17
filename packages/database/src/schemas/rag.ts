@@ -105,7 +105,7 @@ export type EmbeddingsSelectItem = typeof embeddings.$inferSelect;
 export const documentChunks = pgTable(
   'document_chunks',
   {
-    documentId: varchar('document_id', { length: 30 })
+    documentId: varchar('document_id', { length: 255 })
       .references(() => documents.id, { onDelete: 'cascade' })
       .notNull(),
 
