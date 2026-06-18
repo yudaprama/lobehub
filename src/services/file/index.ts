@@ -31,7 +31,7 @@ export class FileService {
 
     if (client) {
       try {
-        const alistPath = id.startsWith('/') ? id : `/${id}`;
+        const alistPath = id.startsWith('/') ? id.slice(1) : id;
         const res = await client.get(alistPath);
         const alistFile = res.data;
         const now = new Date(alistFile.modified);
@@ -71,7 +71,7 @@ export class FileService {
   removeFile = async (id: string): Promise<void> => {
     const client = await getAlistClient();
     if (client) {
-      const alistPath = id.startsWith('/') ? id : `/${id}`;
+      const alistPath = id.startsWith('/') ? id.slice(1) : id;
       try {
         await client.remove([alistPath]);
       } catch (e) {
@@ -89,7 +89,7 @@ export class FileService {
   removeFiles = async (ids: string[]): Promise<void> => {
     const client = await getAlistClient();
     if (client) {
-      const alistPaths = ids.map((id) => (id.startsWith('/') ? id : `/${id}`));
+      const alistPaths = ids.map((id) => (id.startsWith('/') ? id.slice(1) : id));
       try {
         await client.remove(alistPaths);
       } catch (e) {
@@ -109,7 +109,7 @@ export class FileService {
     if (client) {
       try {
         const listed = await client.list('/');
-        const paths = listed.data.content.filter((f) => !f.is_dir).map((f) => `/${f.name}`);
+        const paths = listed.data.content.filter((f) => !f.is_dir).map((f) => f.name);
         if (paths.length > 0) {
           await client.remove(paths);
         }
@@ -207,7 +207,7 @@ export class FileService {
     const client = await getAlistClient();
     if (client && data.name) {
       try {
-        const alistPath = id.startsWith('/') ? id : `/${id}`;
+        const alistPath = id.startsWith('/') ? id.slice(1) : id;
         await client.rename(data.name, alistPath);
       } catch (e) {
         console.warn('[file] AList rename failed:', e);
@@ -244,7 +244,8 @@ export class FileService {
   getDownloadUrl = async (path: string): Promise<string> => {
     const client = await getAlistClient();
     if (!client) throw new Error('AList client not available');
-    return client.downloadUrl(path);
+    const relPath = path.startsWith('/') ? path.slice(1) : path;
+    return client.downloadUrl(relPath);
   };
 }
 
