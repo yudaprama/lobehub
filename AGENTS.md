@@ -168,9 +168,20 @@ Open this URL to develop locally against the production backend (app.lobehub.com
 
 ### Package Management
 
-- `pnpm` for dependency management
-- `bun` to run npm scripts
-- `bunx` for executable npm packages
+- **`lobehub/` MUST use Bun** as the package manager, script runner, and
+  executable runner. Do not use `npm`, `pnpm`, `yarn`, or `npx` here.
+  `packageManager` in `package.json` is `pnpm@10.33.0` for upstream-compat
+  metadata only — Bun drives all real install/script/exec operations.
+- `bun install` — install dependencies (uses `bun.lock`)
+- `bun run <script>` — run npm scripts (e.g. `bun run dev`, `bun run build`,
+  `bun run type-check`)
+- `bunx <pkg>` — run executable npm packages (e.g. `bunx vitest run ...`,
+  `bunx tsc --noEmit`)
+- If a tool or skill asks you to run `pnpm <cmd>`, rewrite it to
+  `bun run <cmd>` / `bunx <cmd>` before executing.
+- CI workflows (`.github/workflows/*.yml`) may still invoke `pnpm` for
+  upstream parity — that is fine. The rule above applies to **agent and
+  developer commands** in this checkout.
 
 ### Testing
 
