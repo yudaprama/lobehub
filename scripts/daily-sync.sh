@@ -76,4 +76,78 @@ fi
 echo "==> Pushing to $PERSONAL/$BRANCH..."
 git push "$PERSONAL" "$BRANCH" --force-with-lease
 
+# ── Create PR to personal/main and auto-merge if conflict-free ──────
+
+TARGET="${TARGET_BRANCH:-main}"
+PR_TITLE="chore: sync ${BRANCH} into ${TARGET} ($(date +%Y-%m-%d))"
+PR_BODY="Automated daily sync of \`${BRANCH}\` into \`${TARGET}\`."
+
+if ! command -v gh >/dev/null 2>&1; then
+  echo "WARN: gh CLI not found, skipping PR creation"
+  echo "==> Done."
+  exit 0
+fi
+
+# Check if an open PR from $BRANCH -> $TARGET already exists
+EXISTING_PR=$(gh pr list \
+  --repo "$PERSONAL/$(git remote get-url "$PERSONAL" | sed 's#.*[:/]##; s#\.git$##')" \
+  --head "$BRANCH" \
+  --base "$TARGET" \
+  --state open \
+  --json number \
+  --jq '.[0].number' 2>/dev/null || echo "")
+
+if [[ -n "$EXISTING_PR" ]]; then
+  echo "==> Open PR #${EXISTING_PR} already exists (${BRANCH} -> ${TARGET}), skipping creation"
+  PR_NUMBER="$EXISTING_PR"
+else
+  echo "==> Creating PR: ${BRANCH} -> ${TARGET}..."
+  PR_URL=$(gh pr create \
+    --repo "$PERSONAL/$(git remote get-url "$PERSONAL" | sed 's#.*[:/]##; s#\.git$##')" \
+    --base "$TARGET" \
+    --head "$BRANCH" \
+    --title "$PR_TITLE" \
+    --body "$PR_BODY" 2>&1) || {
+    echo "WARN: Failed to create PR: $PR_URL"
+    echo "==> Done."
+    exit 0
+  }
+  PR_NUMBER=$(echo "$PR_URL" | grep -oE '[0-9]+$')
+  echo "==> Created PR #${PR_NUMBER}: ${PR_URL}"
+fi
+
+# Wait a moment for GitHub to evaluate mergeability
+sleep 3
+
+# Fetch latest PR status from GitHub
+PR_STATUS=$(gh pr view "$PR_NUMBER" \
+  --repo "$PERSONAL/$(git remote get-url "$PERSONAL" | sed 's#.*[:/]##; s#\.git$##')" \
+  --json mergeable,mergeStateStatus \
+  --jq '{ mergeable: .mergeable, state: .mergeStateStatus }' 2>/dev/null || echo '{"mergeable":"UNKNOWN","state":"UNKNOWN"}')
+
+MERGEABLE=$(echo "$PR_STATUS" | grep -o '"mergeable":"[^"]*"' | cut -d'"' -f4)
+MERGE_STATE=$(echo "$PR_STATUS" | grep -o '"state":"[^"]*"' | cut -d'"' -f4)
+
+echo "==> PR #${PR_NUMBER} mergeable=${MERGEABLE} state=${MERGE_STATE}"
+
+if [[ "$MERGEABLE" == "MERGEABLE" && "$MERGE_STATE" == "clean" ]]; then
+  echo "==> No conflicts — merging PR #${PR_NUMBER}..."
+  gh pr merge "$PR_NUMBER" \
+    --repo "$PERSONAL/$(git remote get-url "$PERSONAL" | sed 's#.*[:/]##; s#\.git$##')" \
+    --merge \
+    --auto 2>&1 || {
+    echo "WARN: Auto-merge failed, trying direct merge..."
+    gh pr merge "$PR_NUMBER" \
+      --repo "$PERSONAL/$(git remote get-url "$PERSONAL" | sed 's#.*[:/]##; s#\.git$##')" \
+      --merge 2>&1 || echo "WARN: Merge failed — resolve manually"
+  }
+  echo "==> Pulling ${TARGET} from ${PERSONAL}..."
+  git fetch "$PERSONAL" "$TARGET" --quiet
+  git checkout "$TARGET" --quiet
+  git pull "$PERSONAL" "$TARGET" --quiet || echo "WARN: pull failed — resolve manually"
+else
+  echo "==> PR #${PR_NUMBER} has conflicts or is not ready (state=${MERGE_STATE})"
+  echo "    Resolve manually: gh pr view ${PR_NUMBER} --repo $PERSONAL/$(git remote get-url "$PERSONAL" | sed 's#.*[:/]##; s#\.git$##')"
+fi
+
 echo "==> Done."
