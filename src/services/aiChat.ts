@@ -1,7 +1,7 @@
 import { type SendMessageServerParams, type StructureOutputParams } from '@lobechat/types';
 import { cleanObject } from '@lobechat/utils';
 
-import { getPrestClient } from '@/libs/prest/client';
+import { getLobehubClient, getPrestClient } from '@/libs/prest/client';
 import { lambdaClient } from '@/libs/trpc/client';
 
 export interface RecordTracingFeedbackParams {
@@ -31,17 +31,18 @@ class AiChatService {
   };
 
   recordTracingFeedback = async (params: RecordTracingFeedbackParams) => {
-    const client = await getPrestClient();
-    await client
-      .from('llm_generation_tracing')
-      .eq('id', params.tracingId)
-      .patch({
+    const db = await getLobehubClient();
+    await db.update(
+      'llm_generation_tracing',
+      { id: params.tracingId },
+      {
         feedback_data: params.data,
-        feedback_score: params.score?.toString(),
+        feedback_score: params.score,
         feedback_signal: params.signal,
         feedback_source: params.source,
         feedback_updated_at: new Date().toISOString(),
-      });
+      },
+    );
   };
 }
 

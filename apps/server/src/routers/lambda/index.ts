@@ -16,7 +16,6 @@ import { agentSignalRouter } from './agentSignal';
 import { agentSkillsRouter } from './agentSkills';
 import { aiAgentRouter } from './aiAgent';
 import { aiChatRouter } from './aiChat';
-import { aiModelRouter } from './aiModel';
 import { aiProviderRouter } from './aiProvider';
 import { apiKeyRouter } from './apiKey';
 import { botMessageRouter } from './botMessage';
@@ -41,7 +40,6 @@ import { messageRouter } from './message';
 import { messengerRouter } from './messenger';
 import { notebookRouter } from './notebook';
 import { oauthDeviceFlowRouter } from './oauthDeviceFlow';
-import { pluginRouter } from './plugin';
 import { ragEvalRouter } from './ragEval';
 import { recentRouter } from './recent';
 import { searchRouter } from './search';
@@ -70,7 +68,6 @@ export const lambdaRouter = router({
   brief: briefRouter,
   aiAgent: aiAgentRouter,
   aiChat: aiChatRouter,
-  aiModel: aiModelRouter,
   aiProvider: aiProviderRouter,
   apiKey: apiKeyRouter,
   chunk: chunkRouter,
@@ -94,7 +91,6 @@ export const lambdaRouter = router({
   messenger: messengerRouter,
   notebook: notebookRouter,
   oauthDeviceFlow: oauthDeviceFlowRouter,
-  plugin: pluginRouter,
   ragEval: ragEvalRouter,
   recent: recentRouter,
   search: searchRouter,

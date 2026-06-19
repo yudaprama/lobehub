@@ -1,6 +1,6 @@
 import { type PartialDeep } from 'type-fest';
 
-import { getPrestClient } from '@/libs/prest/client';
+import { getLobehubClient, getPrestClient } from '@/libs/prest/client';
 import { lambdaClient } from '@/libs/trpc/client';
 import { type LobeAgentChatConfig, type LobeAgentConfig } from '@/types/agent';
 import { type MetaData } from '@/types/meta';
@@ -114,35 +114,30 @@ export class SessionService {
   // ************************************** //
 
   createSessionGroup = async (name: string, sort?: number): Promise<string> => {
-    const client = await getPrestClient();
-    const { data } = await client
-      .from('session_groups')
-      .insert({ name, sort })
-      .single();
-    return data?.id;
+    const db = await getLobehubClient();
+    const [row] = await db.insert('session_groups', { name, sort });
+    return row?.id;
   };
 
   removeSessionGroup = async (id: string) => {
-    const client = await getPrestClient();
-    await client.from('session_groups').eq('id', id).delete();
+    const db = await getLobehubClient();
+    await db.delete('session_groups', { id });
   };
 
   removeSessionGroups = async () => {
-    const client = await getPrestClient();
-    await client.from('session_groups').delete();
+    const db = await getLobehubClient();
+    await db.delete('session_groups', {});
   };
 
   updateSessionGroup = async (id: string, value: Partial<SessionGroupItem>) => {
-    const client = await getPrestClient();
-    await client.from('session_groups').eq('id', id).patch(value);
+    const db = await getLobehubClient();
+    await db.update('session_groups', { id }, value);
   };
 
   updateSessionGroupOrder = async (sortMap: { id: string; sort: number }[]) => {
-    const client = await getPrestClient();
+    const db = await getLobehubClient();
     await Promise.all(
-      sortMap.map(({ id, sort }) =>
-        client.from('session_groups').eq('id', id).patch({ sort }),
-      ),
+      sortMap.map(({ id, sort }) => db.update('session_groups', { id }, { sort })),
     );
   };
 }

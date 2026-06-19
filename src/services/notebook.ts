@@ -1,7 +1,7 @@
 import { type DocumentType } from '@lobechat/builtin-tool-notebook';
 import type { AGENT_PLAN_FILE_TYPE } from '@lobechat/const';
 
-import { getPrestClient } from '@/libs/prest/client';
+import { getLobehubClient, getPrestClient } from '@/libs/prest/client';
 import { lambdaClient } from '@/libs/trpc/client';
 
 type ExtendedDocumentType = DocumentType | typeof AGENT_PLAN_FILE_TYPE;
@@ -33,11 +33,38 @@ interface ListDocumentsParams {
 
 class NotebookService {
   createDocument = async (params: CreateDocumentParams) => {
-    return lambdaClient.notebook.createDocument.mutate(params);
+    const db = await getLobehubClient();
+    const [doc] = await db.insert('documents', {
+      content: params.content,
+      description: params.description,
+      metadata: params.metadata,
+      source: params.source,
+      source_type: params.sourceType,
+      title: params.title,
+      type: params.type,
+    });
+    if (doc && params.topicId) {
+      await db.insert('topic_documents', {
+        document_id: doc.id,
+        topic_id: params.topicId,
+      });
+    }
+    return doc;
   };
 
   updateDocument = async (params: UpdateDocumentParams) => {
-    return lambdaClient.notebook.updateDocument.mutate(params);
+    const db = await getLobehubClient();
+    if (params.append) {
+      const [existing] = await db.select('documents', { where: { id: params.id }, size: 1 });
+      const newContent = (existing?.content || '') + (params.content || '');
+      const [row] = await db.update('documents', { id: params.id }, {
+        ...params,
+        content: newContent,
+      });
+      return row;
+    }
+    const [row] = await db.update('documents', { id: params.id }, params);
+    return row;
   };
 
   getDocument = async (id: string) => {
@@ -50,9 +77,18 @@ class NotebookService {
   };
 
   listDocuments = async (params: ListDocumentsParams) => {
-    return lambdaClient.notebook.listDocuments.query(params);
+    const db = await getLobehubClient();
+    const links = await db.select('topic_documents', {
+      where: { topic_id: params.topicId },
+    });
+    if (!links.length) return [];
+    const docIds = links.map((l) => l.document_id);
+    return db.select('documents', {
+      where: { id: { in: docIds }, ...(params.type ? { type: params.type } : {}) },
+    });
   };
 
+  // Stays on BFF — may have side effects via NotebookRuntimeService
   deleteDocument = async (id: string) => {
     return lambdaClient.notebook.deleteDocument.mutate({ id });
   };

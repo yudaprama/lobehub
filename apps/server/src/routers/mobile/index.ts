@@ -8,7 +8,6 @@ import { publicProcedure, router } from '@/libs/trpc/lambda';
 import { agentRouter } from '../lambda/agent';
 import { aiAgentRouter } from '../lambda/aiAgent';
 import { aiChatRouter } from '../lambda/aiChat';
-import { aiModelRouter } from '../lambda/aiModel';
 import { aiProviderRouter } from '../lambda/aiProvider';
 import { briefRouter } from '../lambda/brief';
 import { chunkRouter } from '../lambda/chunk';
@@ -30,7 +29,6 @@ export const mobileRouter = router({
   aiAgent: aiAgentRouter,
   aiChat: aiChatRouter,
   brief: briefRouter,
-  aiModel: aiModelRouter,
   aiProvider: aiProviderRouter,
   chunk: chunkRouter,
   config: configRouter,

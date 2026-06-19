@@ -1,7 +1,6 @@
 import { type LobeTool, type ToolManifest } from '@lobechat/types';
 
-import { getPrestClient } from '@/libs/prest/client';
-import { lambdaClient } from '@/libs/trpc/client';
+import { getLobehubClient, getPrestClient } from '@/libs/prest/client';
 import { type LobeToolCustomPlugin } from '@/types/tool/plugin';
 
 export interface InstallPluginParams {
@@ -33,7 +32,30 @@ const toLobeTool = (row: InstalledPluginRow): LobeTool => ({
 
 export class PluginService {
   installPlugin = async (plugin: InstallPluginParams): Promise<void> => {
-    await lambdaClient.plugin.createOrInstallPlugin.mutate(plugin);
+    const db = await getLobehubClient();
+    const existing = await db.select('user_installed_plugins', {
+      where: { identifier: plugin.identifier },
+      size: 1,
+    });
+    if (existing.length > 0) {
+      await db.update(
+        'user_installed_plugins',
+        { identifier: plugin.identifier },
+        {
+          custom_params: plugin.customParams,
+          manifest: plugin.manifest,
+          settings: plugin.settings,
+        },
+      );
+    } else {
+      await db.insert('user_installed_plugins', {
+        custom_params: plugin.customParams,
+        identifier: plugin.identifier,
+        manifest: plugin.manifest,
+        settings: plugin.settings,
+        type: plugin.type,
+      });
+    }
   };
 
   getInstalledPlugins = async (): Promise<LobeTool[]> => {
@@ -52,32 +74,47 @@ export class PluginService {
   };
 
   uninstallPlugin = async (identifier: string): Promise<void> => {
-    await lambdaClient.plugin.removePlugin.mutate({ id: identifier });
+    const db = await getLobehubClient();
+    await db.delete('user_installed_plugins', { identifier });
   };
 
   createCustomPlugin = async (customPlugin: LobeToolCustomPlugin): Promise<void> => {
-    await lambdaClient.plugin.createPlugin.mutate({ ...customPlugin, type: 'customPlugin' });
-  };
-
-  updatePlugin = async (id: string, value: Partial<LobeToolCustomPlugin>): Promise<void> => {
-    await lambdaClient.plugin.updatePlugin.mutate({
-      customParams: value.customParams,
-      id,
-      manifest: value.manifest,
-      settings: value.settings,
+    const db = await getLobehubClient();
+    await db.insert('user_installed_plugins', {
+      custom_params: customPlugin.customParams,
+      identifier: customPlugin.id,
+      manifest: customPlugin.manifest,
+      settings: customPlugin.settings,
+      type: 'customPlugin',
     });
   };
 
+  updatePlugin = async (id: string, value: Partial<LobeToolCustomPlugin>): Promise<void> => {
+    const db = await getLobehubClient();
+    await db.update(
+      'user_installed_plugins',
+      { identifier: id },
+      {
+        custom_params: value.customParams,
+        manifest: value.manifest,
+        settings: value.settings,
+      },
+    );
+  };
+
   updatePluginManifest = async (id: string, manifest: ToolManifest): Promise<void> => {
-    await lambdaClient.plugin.updatePlugin.mutate({ id, manifest });
+    const db = await getLobehubClient();
+    await db.update('user_installed_plugins', { identifier: id }, { manifest });
   };
 
   removeAllPlugins = async (): Promise<void> => {
-    await lambdaClient.plugin.removeAllPlugins.mutate();
+    const db = await getLobehubClient();
+    await db.delete('user_installed_plugins', {});
   };
 
-  updatePluginSettings = async (id: string, settings: any, signal?: AbortSignal): Promise<void> => {
-    await lambdaClient.plugin.updatePlugin.mutate({ id, settings }, { signal });
+  updatePluginSettings = async (id: string, settings: any, _signal?: AbortSignal): Promise<void> => {
+    const db = await getLobehubClient();
+    await db.update('user_installed_plugins', { identifier: id }, { settings });
   };
 }
 

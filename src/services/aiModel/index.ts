@@ -7,7 +7,7 @@ import {
   type UpdateAiModelParams,
 } from 'model-bank';
 
-import { lambdaClient } from '@/libs/trpc/client';
+import { getLobehubClient } from '@/libs/prest/client';
 
 export interface GetAiProviderModelListParams {
   enabled?: boolean;
@@ -17,51 +17,70 @@ export interface GetAiProviderModelListParams {
 
 export class AiModelService {
   createAiModel = async (params: CreateAiModelParams) => {
-    return lambdaClient.aiModel.createAiModel.mutate(params);
+    const db = await getLobehubClient();
+    return db.insert('ai_models', params);
   };
 
   getAiProviderModelList = async (
     id: string,
     params?: GetAiProviderModelListParams,
   ): Promise<AiProviderModelListItem[]> => {
-    const models = await lambdaClient.aiModel.getAiProviderModelList.query({ id, ...params });
+    const db = await getLobehubClient();
+    const models = await db.select('ai_models', {
+      where: { provider_id: id, ...(params?.enabled != null ? { enabled: params.enabled } : {}) },
+      size: params?.limit ?? 200,
+    });
     return models.filter(isAiModelVisible);
   };
 
   getAiModelById = async (id: string) => {
-    return lambdaClient.aiModel.getAiModelById.query({ id });
+    const db = await getLobehubClient();
+    const [model] = await db.select('ai_models', { where: { id }, size: 1 });
+    return model;
   };
 
   toggleModelEnabled = async (params: ToggleAiModelEnableParams) => {
-    return lambdaClient.aiModel.toggleModelEnabled.mutate(params);
+    const db = await getLobehubClient();
+    await db.update('ai_models', { id: params.id }, { enabled: params.enabled });
   };
 
   updateAiModel = async (id: string, providerId: string, value: UpdateAiModelParams) => {
-    return lambdaClient.aiModel.updateAiModel.mutate({ id, providerId, value });
+    const db = await getLobehubClient();
+    await db.update('ai_models', { id, provider_id: providerId }, value);
   };
 
   batchUpdateAiModels = async (id: string, models: AiProviderModelListItem[]) => {
-    return lambdaClient.aiModel.batchUpdateAiModels.mutate({ id, models });
+    const db = await getLobehubClient();
+    await Promise.all(
+      models.map((m) => db.update('ai_models', { id: m.id, provider_id: id }, m as any)),
+    );
   };
 
   batchToggleAiModels = async (id: string, models: string[], enabled: boolean) => {
-    return lambdaClient.aiModel.batchToggleAiModels.mutate({ enabled, id, models });
+    const db = await getLobehubClient();
+    await db.update('ai_models', { provider_id: id, id: { in: models } }, { enabled });
   };
 
   clearModelsByProvider = async (providerId: string) => {
-    return lambdaClient.aiModel.clearModelsByProvider.mutate({ providerId });
+    const db = await getLobehubClient();
+    await db.delete('ai_models', { provider_id: providerId });
   };
 
   clearRemoteModels = async (providerId: string) => {
-    return lambdaClient.aiModel.clearRemoteModels.mutate({ providerId });
+    const db = await getLobehubClient();
+    await db.delete('ai_models', { provider_id: providerId, source: 'remote' });
   };
 
   updateAiModelOrder = async (providerId: string, items: AiModelSortMap[]) => {
-    return lambdaClient.aiModel.updateAiModelOrder.mutate({ providerId, sortMap: items });
+    const db = await getLobehubClient();
+    await Promise.all(
+      items.map((item) => db.update('ai_models', { id: item.id, provider_id: providerId }, { sort_order: item.sort })),
+    );
   };
 
   deleteAiModel = async (params: { id: string; providerId: string }) => {
-    return lambdaClient.aiModel.removeAiModel.mutate(params);
+    const db = await getLobehubClient();
+    await db.delete('ai_models', { id: params.id, provider_id: params.providerId });
   };
 }
 
