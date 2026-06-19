@@ -19,7 +19,7 @@ import {
 } from '@/database/models/messengerAccountLink';
 import type { DecryptedMessengerInstallation } from '@/database/models/messengerInstallation';
 import { MessengerInstallationModel } from '@/database/models/messengerInstallation';
-import { RbacModel } from '@/database/models/rbac';
+import { checkWorkspacePermission } from '@/business/server/trpc-middlewares/ketoClient';
 import { WorkspaceModel } from '@/database/models/workspace';
 import { agents, users } from '@/database/schemas';
 import type { LobeChatDatabase } from '@/database/type';
@@ -176,10 +176,7 @@ const resolveAuthorizedAgentScope = async (
   if (!isMember) {
     throw new TRPCError({ code: 'FORBIDDEN', message: 'messenger.error.agentNotFound' });
   }
-  const allowed = await new RbacModel(serverDB, userId).hasAnyPermission(
-    ['agent:update:all', 'agent:update:owner'],
-    { workspaceId: agentRow.workspaceId },
-  );
+  const allowed = await checkWorkspacePermission(userId, agentRow.workspaceId, 'agent:update');
   if (!allowed) {
     throw new TRPCError({ code: 'FORBIDDEN', message: 'messenger.error.agentNotFound' });
   }

@@ -8,6 +8,65 @@ import {
 } from '../schemas/workspace';
 import type { LobeChatDatabase } from '../type';
 
+type KetoRelation = 'members' | 'owners' | 'viewers';
+
+const KETO_WRITE_URL = process.env.KETO_WRITE_URL;
+
+/**
+ * Best-effort Keto tuple write. Fires after DB commits so a Keto failure
+ * never rolls back the transaction. Monitor `[keto-sync]` log lines for
+ * drift between DB state and Keto tuples.
+ */
+const syncKetoTuple = (
+  workspaceId: string,
+  userId: string,
+  relation: KetoRelation,
+  action: 'delete' | 'put',
+): void => {
+  if (!KETO_WRITE_URL) return;
+
+  const tuple = {
+    namespace: 'workspace',
+    object: workspaceId,
+    relation,
+    subject_id: userId,
+  };
+
+  const doSync = async () => {
+    try {
+      if (action === 'put') {
+        const res = await fetch(`${KETO_WRITE_URL}/admin/relation-tuples`, {
+          body: JSON.stringify(tuple),
+          headers: { 'Content-Type': 'application/json' },
+          method: 'PUT',
+        });
+        if (!res.ok) {
+          console.error(
+            `[keto-sync] PUT failed: workspace:${workspaceId}#${relation}@user:${userId} → ${res.status}`,
+          );
+        }
+      } else {
+        const params = new URLSearchParams(tuple);
+        const res = await fetch(`${KETO_WRITE_URL}/admin/relation-tuples?${params}`, {
+          method: 'DELETE',
+        });
+        if (!res.ok && res.status !== 404) {
+          console.error(
+            `[keto-sync] DELETE failed: workspace:${workspaceId}#${relation}@user:${userId} → ${res.status}`,
+          );
+        }
+      }
+    } catch (error) {
+      console.error(
+        `[keto-sync] ${action.toUpperCase()} error: workspace:${workspaceId}#${relation}@user:${userId}`,
+        error,
+      );
+    }
+  };
+
+  void doSync();
+};
+
 export class WorkspaceModel {
   protected readonly db: LobeChatDatabase;
   protected readonly userId: string;
@@ -41,6 +100,9 @@ export class WorkspaceModel {
         workspaceId: workspace.id,
       });
 
+      return workspace;
+    }).then((workspace) => {
+      syncKetoTuple(workspace.id, this.userId, 'owners', 'put');
       return workspace;
     });
   };
@@ -207,6 +269,10 @@ export class WorkspaceModel {
         );
 
       return { ...target, role: 'owner' };
+    }).then((result) => {
+      syncKetoTuple(id, targetUserId, 'members', 'delete');
+      syncKetoTuple(id, targetUserId, 'owners', 'put');
+      return result;
     });
   };
 
@@ -248,6 +314,10 @@ export class WorkspaceModel {
         );
 
       return { ...target, role: 'member' };
+    }).then((result) => {
+      syncKetoTuple(id, targetUserId, 'owners', 'delete');
+      syncKetoTuple(id, targetUserId, 'members', 'put');
+      return result;
     });
   };
 
@@ -310,6 +380,13 @@ export class WorkspaceModel {
         removedUserIds: removedMembers.map((m) => m.userId),
         workspace: updated,
       };
+    }).then((result) => {
+      for (const uid of result.removedUserIds) {
+        syncKetoTuple(id, uid, 'owners', 'delete');
+        syncKetoTuple(id, uid, 'members', 'delete');
+        syncKetoTuple(id, uid, 'viewers', 'delete');
+      }
+      return result;
     });
   };
 

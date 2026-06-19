@@ -28,8 +28,8 @@ import {
   getSubscriptionPlan,
   onUserActivityForBusiness,
 } from '@/business/server/user';
+import { checkWorkspacePermission } from '@/business/server/trpc-middlewares/ketoClient';
 import { MessageModel } from '@/database/models/message';
-import { RbacModel } from '@/database/models/rbac';
 import { SessionModel } from '@/database/models/session';
 import { UserModel } from '@/database/models/user';
 import { authedProcedure, router } from '@/libs/trpc/lambda';
@@ -50,8 +50,6 @@ const usernameSchema = z
 const AVATAR_WEBAPI_PREFIX = '/webapi/';
 const OWNER_SETTING_KEYS = ['defaultAgent', 'image', 'memory', 'systemAgent', 'tts'] as const;
 const MEMBER_SETTING_KEYS = ['tool'] as const;
-const WORKSPACE_UPDATE_PERMISSION = 'workspace:update:all';
-const WORKSPACE_CONTENT_PERMISSIONS = ['agent:update:all', 'agent:update:owner'] as const;
 
 // Accept only: base64 data URL, absolute http(s) URL, empty string,
 // or an internal /webapi/user/avatar/<userId>/... path scoped to the caller.
@@ -511,14 +509,8 @@ export const userRouter = router({
     const { keyVaults, ...res } = input as Partial<UserSettings>;
 
     if (ctx.workspaceId && (hasOwnerSettingChange(res) || hasMemberSettingChange(res))) {
-      const rbac = new RbacModel(ctx.serverDB, ctx.userId);
-      const allowed = hasOwnerSettingChange(res)
-        ? await rbac.hasPermission(WORKSPACE_UPDATE_PERMISSION, {
-            workspaceId: ctx.workspaceId,
-          })
-        : await rbac.hasAnyPermission([...WORKSPACE_CONTENT_PERMISSIONS], {
-            workspaceId: ctx.workspaceId,
-          });
+      const actionCode = hasOwnerSettingChange(res) ? 'workspace:update' : 'agent:update';
+      const allowed = await checkWorkspacePermission(ctx.userId, ctx.workspaceId, actionCode);
 
       if (!allowed) {
         throw new TRPCError({

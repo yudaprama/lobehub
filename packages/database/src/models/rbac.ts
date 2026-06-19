@@ -59,6 +59,16 @@ const normalizeScope = (arg: string | RbacScopeOptions | undefined): RbacScopeOp
   return arg;
 };
 
+/**
+ * @deprecated Being replaced by Ory Keto relationship tuples. New code should
+ * use `checkWorkspacePermission` from `@/business/server/trpc-middlewares/ketoClient`
+ * for permission checks and `writeWorkspaceTuple` / `deleteWorkspaceTuple` for
+ * role mutations. The underlying `rbac_*` tables will be dropped after the
+ * Keto migration is verified in production.
+ *
+ * See `LOBEHUB_BACKEND_DATABASE_MAP.md` → "Ory Keto for RBAC" and
+ * `infra/keto/` for the migration plan.
+ */
 export class RbacModel {
   private userId: string;
   private db: LobeChatDatabase;
