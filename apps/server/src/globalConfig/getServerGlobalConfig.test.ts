@@ -83,7 +83,7 @@ const mockGlobalConfigDependencies = (
     toolsEnv: {},
   }));
 
-  vi.doMock('@/libs/better-auth/utils/server', () => ({
+  vi.doMock('@/libs/kratos/sso', () => ({
     parseSSOProviders: vi.fn(() => []),
   }));
 

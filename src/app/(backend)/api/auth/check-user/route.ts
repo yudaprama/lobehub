@@ -1,8 +1,7 @@
-import { and, eq } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import { type NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 
-import { account } from '@/database/schemas/betterAuth';
 import { users } from '@/database/schemas/user';
 import { serverDB } from '@/database/server';
 
@@ -12,9 +11,12 @@ export interface CheckUserResponseData {
 }
 
 /**
- * Check if a user exists by email
+ * Check if a user exists by email.
+ * With Kratos, the existence check is sufficient for the UI flow; the
+ * password presence flag is no longer derived from the Better Auth accounts
+ * table because credentials are managed by Kratos.
  * @param req - POST request with { email: string }
- * @returns { exists: boolean, emailVerified?: boolean }
+ * @returns { exists: boolean, hasPassword?: boolean }
  */
 export async function POST(req: NextRequest) {
   try {
@@ -39,21 +41,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ exists: false });
     }
 
-    const accounts = await serverDB
-      .select({
-        password: account.password,
-        providerId: account.providerId,
-      })
-      .from(account)
-      .where(and(eq(account.userId, user.id)));
-    const hasPassword = accounts.some(
-      (a) =>
-        a.providerId === 'credential' && typeof a.password === 'string' && a.password.length > 0,
-    );
-
     return NextResponse.json({
       exists: true,
-      hasPassword,
     } satisfies CheckUserResponseData);
   } catch (error) {
     console.error('Error checking user existence:', error);

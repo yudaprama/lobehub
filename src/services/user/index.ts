@@ -6,7 +6,6 @@ import { getPrestClient } from '@/libs/prest/client';
 import { lambdaClient } from '@/libs/trpc/client';
 import {
   type SaveUserQuestionInput,
-  type SSOProvider,
   type UserAgentOnboarding,
   type UserAgentOnboardingContext,
   type UserGuide,
@@ -27,10 +26,6 @@ export class UserService {
 
   getUserState = async (): Promise<UserInitializationState> => {
     return lambdaClient.user.getUserState.query();
-  };
-
-  getUserSSOProviders = async (): Promise<SSOProvider[]> => {
-    return lambdaClient.user.getUserSSOProviders.query();
   };
 
   getOrCreateOnboardingState = async (): Promise<{

@@ -1,7 +1,3 @@
-import { randomBytes } from 'node:crypto';
-
-import bcrypt from 'bcryptjs';
-
 // Test user credentials - these are used for e2e testing only
 export const TEST_USER = {
   email: 'e2e-test@lobehub.com',
@@ -12,16 +8,10 @@ export const TEST_USER = {
 };
 
 /**
- * Create a bcrypt password hash
- * Better Auth supports bcrypt for passwords migrated from Clerk
- */
-async function hashPassword(password: string): Promise<string> {
-  return bcrypt.hash(password, 10);
-}
-
-/**
- * Seed test user into the database for e2e testing
- * This function connects directly to PostgreSQL and creates the necessary records
+ * Seed test user into the database for e2e testing.
+ * With Kratos, the user identity is managed by Kratos itself.
+ * This function only seeds the LobeHub users table row so the
+ * app can find the user by email.  Credentials live in Kratos.
  */
 export async function seedTestUser(): Promise<void> {
   const databaseUrl = process.env.DATABASE_URL;
@@ -31,7 +21,6 @@ export async function seedTestUser(): Promise<void> {
     return;
   }
 
-  // Dynamic import pg to avoid bundling issues
   const { default: pg } = await import('pg');
   const client = new pg.Client({ connectionString: databaseUrl });
 
@@ -40,16 +29,6 @@ export async function seedTestUser(): Promise<void> {
     console.log('🔌 Connected to database for test user seeding');
 
     const now = new Date().toISOString();
-    // Use fixed account ID to avoid conflicts when multiple workers run concurrently
-    const accountId = 'e2e_test_account_001';
-
-    // Use upsert to handle concurrent worker execution
-    // Insert user or do nothing if already exists (handles all unique constraints)
-    const passwordHash = await hashPassword(TEST_USER.password);
-
-    // Use ON CONFLICT DO NOTHING to handle all unique constraint conflicts
-    // This is safe because we're using fixed test user credentials
-    // Set onboarding as completed to skip onboarding flow in tests
     const onboarding = JSON.stringify({ finishedAt: now, version: 1 });
 
     await client.query(
@@ -62,23 +41,8 @@ export async function seedTestUser(): Promise<void> {
         TEST_USER.email.toLowerCase(),
         TEST_USER.username,
         TEST_USER.fullName,
-        true, // email_verified
+        true,
         onboarding,
-        now,
-      ],
-    );
-
-    // Create account record with password (for credential login)
-    await client.query(
-      `INSERT INTO accounts (id, user_id, account_id, provider_id, password, created_at, updated_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $6)
-       ON CONFLICT DO NOTHING`,
-      [
-        accountId,
-        TEST_USER.id,
-        TEST_USER.email, // account_id is email for credential provider
-        'credential', // provider_id
-        passwordHash,
         now,
       ],
     );
@@ -94,41 +58,10 @@ export async function seedTestUser(): Promise<void> {
   }
 }
 
-export async function createTestSession(): Promise<string | null> {
-  const databaseUrl = process.env.DATABASE_URL;
-
-  if (!databaseUrl) {
-    console.log('⚠️ DATABASE_URL not set, cannot create test session');
-    return null;
-  }
-
-  await seedTestUser();
-
-  const { default: pg } = await import('pg');
-  const client = new pg.Client({ connectionString: databaseUrl });
-
-  try {
-    await client.connect();
-
-    const now = new Date();
-    const expiresAt = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
-    const sessionId = randomBytes(9).toString('base64url');
-    const sessionToken = randomBytes(24).toString('base64url');
-
-    await client.query(
-      `INSERT INTO auth_sessions (id, token, user_id, expires_at, created_at, updated_at)
-       VALUES ($1, $2, $3, $4, $5, $5)`,
-      [sessionId, sessionToken, TEST_USER.id, expiresAt.toISOString(), now.toISOString()],
-    );
-
-    return sessionToken;
-  } finally {
-    await client.end();
-  }
-}
-
 /**
- * Clean up test user data after tests
+ * Clean up test user data after tests.
+ * With Kratos, sessions and credentials are managed by Kratos, so we
+ * only delete the LobeHub users row here.
  */
 export async function cleanupTestUser(): Promise<void> {
   const databaseUrl = process.env.DATABASE_URL;
@@ -143,13 +76,6 @@ export async function cleanupTestUser(): Promise<void> {
   try {
     await client.connect();
 
-    // Delete sessions first (foreign key)
-    await client.query('DELETE FROM auth_sessions WHERE user_id = $1', [TEST_USER.id]);
-
-    // Delete accounts (foreign key)
-    await client.query('DELETE FROM accounts WHERE user_id = $1', [TEST_USER.id]);
-
-    // Delete user
     await client.query('DELETE FROM users WHERE id = $1', [TEST_USER.id]);
 
     console.log('🧹 Test user cleaned up');

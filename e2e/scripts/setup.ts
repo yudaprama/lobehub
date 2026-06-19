@@ -43,7 +43,6 @@ const CONFIG = {
   // 2 minutes
   // Secrets (for e2e testing only)
   secrets: {
-    betterAuthSecret: 'e2e-test-secret-key-for-better-auth-32chars!',
     keyVaultsSecret: 'LA7n9k3JdEcbSgml2sxfw+4TV1AzaaFU5+R176aQz4s=',
   },
 
@@ -259,7 +258,6 @@ async function buildApp(): Promise<void> {
   log('🔨', 'Building application (this may take a few minutes)...');
 
   await execAsync('bun', ['run', 'build'], {
-    AUTH_SECRET: CONFIG.secrets.betterAuthSecret,
     DATABASE_DRIVER: CONFIG.databaseDriver,
     DATABASE_URL: CONFIG.databaseUrl,
     KEY_VAULTS_SECRET: CONFIG.secrets.keyVaultsSecret,
@@ -285,7 +283,6 @@ async function isServerRunning(port: number): Promise<boolean> {
 function getServerEnv(port: number): Record<string, string> {
   return {
     AUTH_EMAIL_VERIFICATION: '0',
-    AUTH_SECRET: CONFIG.secrets.betterAuthSecret,
     DATABASE_DRIVER: CONFIG.databaseDriver,
     DATABASE_URL: CONFIG.databaseUrl,
     KEY_VAULTS_SECRET: CONFIG.secrets.keyVaultsSecret,

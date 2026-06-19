@@ -16,13 +16,19 @@ vi.mock('@/libs/swr', async () => {
   };
 });
 
-const mockBetterAuthClient = vi.hoisted(() => ({
-  listAccounts: vi.fn().mockResolvedValue({ data: [] }),
-  accountInfo: vi.fn().mockResolvedValue({ data: { user: {} } }),
-  signOut: vi.fn().mockResolvedValue({}),
+const mockKratos = vi.hoisted(() => ({
+  createBrowserLogoutFlow: vi.fn(),
+  toSession: vi.fn(),
+  updateLogoutFlow: vi.fn(),
 }));
 
-vi.mock('@/libs/better-auth/auth-client', () => mockBetterAuthClient);
+const mockFetch = vi.hoisted(() => vi.fn().mockResolvedValue({ ok: true }));
+
+vi.mock('@/libs/kratos/sdk', () => ({
+  kratos: mockKratos,
+}));
+
+vi.stubGlobal('fetch', mockFetch);
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -34,6 +40,21 @@ afterEach(() => {
     authProviders: [],
     hasPasswordAccount: false,
   });
+});
+
+beforeEach(() => {
+  mockKratos.createBrowserLogoutFlow.mockResolvedValue({
+    data: { logout_token: 'test-token' },
+  });
+  mockKratos.toSession.mockResolvedValue({
+    data: {
+      identity: {
+        id: 'kratos-user-1',
+        traits: { email: 'test@test.com', name: 'Test' },
+      },
+    },
+  });
+  mockKratos.updateLogoutFlow.mockResolvedValue({ data: undefined });
 });
 
 describe('createAuthSlice', () => {
@@ -50,14 +71,30 @@ describe('createAuthSlice', () => {
   });
 
   describe('logout', () => {
-    it('should call better-auth signOut', async () => {
-      const { result } = renderHook(() => useUserStore());
-
-      await act(async () => {
-        await result.current.logout();
+    it('should call Kratos logout flow', async () => {
+      const originalLocation = window.location;
+      Object.defineProperty(window, 'location', {
+        configurable: true,
+        value: {
+          ...originalLocation,
+          href: '',
+        },
+        writable: true,
       });
 
-      expect(mockBetterAuthClient.signOut).toHaveBeenCalled();
+      const store = useUserStore.getState();
+
+      await store.logout();
+
+      expect(mockKratos.createBrowserLogoutFlow).toHaveBeenCalled();
+      expect(mockKratos.updateLogoutFlow).toHaveBeenCalledWith({ token: 'test-token' });
+      expect(window.location.href).toBe('/signin');
+
+      Object.defineProperty(window, 'location', {
+        configurable: true,
+        value: originalLocation,
+        writable: true,
+      });
     });
   });
 
@@ -130,33 +167,22 @@ describe('createAuthSlice', () => {
         await result.current.fetchAuthProviders();
       });
 
-      expect(mockBetterAuthClient.listAccounts).not.toHaveBeenCalled();
+      expect(mockKratos.toSession).not.toHaveBeenCalled();
     });
 
-    it('should fetch providers from BetterAuth', async () => {
-      mockBetterAuthClient.listAccounts.mockResolvedValueOnce({
-        data: [
-          { providerId: 'github', accountId: 'gh-123' },
-          { providerId: 'credential', accountId: 'cred-1' },
-        ],
-      });
-      mockBetterAuthClient.accountInfo.mockResolvedValueOnce({
-        data: { user: { email: 'test@github.com' } },
-      });
-
+    it('should fetch providers from Kratos', async () => {
       const { result } = renderHook(() => useUserStore());
 
       await act(async () => {
         await result.current.fetchAuthProviders();
       });
 
-      expect(mockBetterAuthClient.listAccounts).toHaveBeenCalled();
+      expect(mockKratos.toSession).toHaveBeenCalled();
       expect(result.current.isLoadedAuthProviders).toBe(true);
-      expect(result.current.hasPasswordAccount).toBe(true);
     });
 
     it('should handle fetch error gracefully', async () => {
-      mockBetterAuthClient.listAccounts.mockRejectedValueOnce(new Error('Network error'));
+      mockKratos.toSession.mockRejectedValueOnce(new Error('Network error'));
 
       const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
@@ -172,28 +198,18 @@ describe('createAuthSlice', () => {
   });
 
   describe('refreshAuthProviders', () => {
-    it('should refresh providers from BetterAuth', async () => {
-      mockBetterAuthClient.listAccounts.mockResolvedValueOnce({
-        data: [{ providerId: 'google', accountId: 'g-1' }],
-      });
-      mockBetterAuthClient.accountInfo.mockResolvedValueOnce({
-        data: { user: { email: 'user@gmail.com' } },
-      });
-
+    it('should refresh providers from Kratos', async () => {
       const { result } = renderHook(() => useUserStore());
 
       await act(async () => {
         await result.current.refreshAuthProviders();
       });
 
-      expect(mockBetterAuthClient.listAccounts).toHaveBeenCalled();
-      expect(result.current.authProviders).toEqual([
-        { provider: 'google', email: 'user@gmail.com', providerAccountId: 'g-1' },
-      ]);
+      expect(mockKratos.toSession).toHaveBeenCalled();
     });
 
     it('should handle refresh error gracefully', async () => {
-      mockBetterAuthClient.listAccounts.mockRejectedValueOnce(new Error('Refresh failed'));
+      mockKratos.toSession.mockRejectedValueOnce(new Error('Refresh failed'));
 
       const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 

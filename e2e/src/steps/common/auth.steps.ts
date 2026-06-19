@@ -1,8 +1,8 @@
 import { Given, When } from '@cucumber/cucumber';
 import { expect } from '@playwright/test';
 
-import { TEST_USER, createTestSession } from '../../support/seedTestUser';
-import { CustomWorld } from '../../support/world';
+import { seedTestUser, TEST_USER } from '../../support/seedTestUser';
+import type { CustomWorld } from '../../support/world';
 
 /**
  * Login via UI - fills in the login form and submits
@@ -30,30 +30,32 @@ Given('I am logged in as the test user', async function (this: CustomWorld) {
 });
 
 /**
- * Login via session injection - faster, bypasses UI
- * Creates a session directly in the database and sets the cookie
+ * Login via session injection - seeds user and uses UI login
+ * With Kratos, sessions are managed by the Kratos server, so we seed
+ * the user row and fall back to the UI login flow.
  */
 Given('I am logged in with a session', async function (this: CustomWorld) {
-  const sessionToken = await createTestSession();
+  await seedTestUser();
 
-  if (!sessionToken) {
-    throw new Error('Failed to create test session');
-  }
+  // Navigate to signin page
+  await this.page.goto('/signin');
 
-  // Set the session cookie (Better Auth uses 'better-auth.session_token' by default)
-  await this.browserContext.addCookies([
-    {
-      domain: 'localhost',
-      httpOnly: true,
-      name: 'better-auth.session_token',
-      path: '/',
-      sameSite: 'Lax',
-      secure: false,
-      value: sessionToken,
-    },
-  ]);
+  // Wait for the login form to be visible
+  await this.page.waitForSelector('input[type="email"], input[name="email"]', { timeout: 30_000 });
 
-  console.log('✅ Session cookie set for test user');
+  // Fill in email
+  await this.page.fill('input[type="email"], input[name="email"]', TEST_USER.email);
+
+  // Fill in password
+  await this.page.fill('input[type="password"], input[name="password"]', TEST_USER.password);
+
+  // Click submit button
+  await this.page.click('button[type="submit"]');
+
+  // Wait for navigation away from signin page
+  await this.page.waitForURL((url) => !url.pathname.includes('/signin'), { timeout: 30_000 });
+
+  console.log('✅ Logged in as test user via UI');
 });
 
 /**

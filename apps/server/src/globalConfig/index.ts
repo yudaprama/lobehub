@@ -10,7 +10,7 @@ import { imageEnv } from '@/envs/image';
 import { knowledgeEnv } from '@/envs/knowledge';
 import { langfuseEnv } from '@/envs/langfuse';
 import { toolsEnv } from '@/envs/tools';
-import { parseSSOProviders } from '@/libs/better-auth/utils/server';
+import { parseSSOProviders } from '@/libs/kratos/sso';
 import { parseSystemAgent } from '@/server/globalConfig/parseSystemAgent';
 import { type GlobalServerConfig } from '@/types/serverConfig';
 import { cleanObject } from '@/utils/object';
@@ -27,7 +27,7 @@ import { getPublicMemoryExtractionConfig } from './parseMemoryExtractionConfig';
  * Get Better-Auth SSO providers list
  * Parses AUTH_SSO_PROVIDERS and returns enabled providers
  */
-const getBetterAuthSSOProviders = () => {
+const getSSOProviders = () => {
   return parseSSOProviders(authEnv.AUTH_SSO_PROVIDERS);
 };
 
@@ -134,7 +134,7 @@ export const getServerGlobalConfig = async () => {
     memory: {
       userMemory: cleanObject(getPublicMemoryExtractionConfig()),
     },
-    oAuthSSOProviders: getBetterAuthSSOProviders(),
+    oAuthSSOProviders: getSSOProviders(),
     systemAgent: parseSystemAgent(appEnv.SYSTEM_AGENT),
     telemetry: {
       langfuse: langfuseEnv.ENABLE_LANGFUSE,

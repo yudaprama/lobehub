@@ -4,7 +4,7 @@ import { AgentRuntimeErrorType, ModelRuntime } from '@lobechat/model-runtime';
 import { ChatErrorType } from '@lobechat/types';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { auth } from '@/auth';
+import { getKratosSession } from '@/libs/kratos/server-session';
 import { initModelRuntimeFromDB } from '@/server/modules/ModelRuntime';
 
 import { GET } from './route';
@@ -13,12 +13,8 @@ vi.mock('@/app/(backend)/middleware/auth/utils', () => ({
   checkAuthMethod: vi.fn(),
 }));
 
-vi.mock('@/auth', () => ({
-  auth: {
-    api: {
-      getSession: vi.fn().mockResolvedValue(null),
-    },
-  },
+vi.mock('@/libs/kratos/server-session', () => ({
+  getKratosSession: vi.fn().mockResolvedValue(null),
 }));
 
 vi.mock('@/server/modules/ModelRuntime', () => ({
@@ -35,9 +31,8 @@ beforeEach(() => {
   });
 
   // Default: valid session
-  vi.mocked(auth.api.getSession).mockResolvedValue({
-    session: {} as any,
-    user: { id: 'test-user-id' } as any,
+  vi.mocked(getKratosSession).mockResolvedValue({
+    user: { id: 'test-user-id', email: 'test@test.com', name: 'Test' },
   });
 });
 

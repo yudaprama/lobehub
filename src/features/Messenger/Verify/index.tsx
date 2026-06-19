@@ -1,14 +1,13 @@
 'use client';
 
 import { Button, Flexbox } from '@lobehub/ui';
+import { useSearchParams } from 'next/navigation';
 import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useSearchParams } from 'react-router-dom';
 import useSWR from 'swr';
 
 import Loading from '@/components/Loading/BrandTextLoading';
-import { useSession } from '@/libs/better-auth/auth-client';
-import { messengerKeys } from '@/libs/swr/keys';
+import { useKratosSession } from '@/libs/kratos/session';
 import { messengerService } from '@/services/messenger';
 
 import { type MessengerPlatform } from '../constants';
@@ -21,21 +20,21 @@ const isSupportedPlatform = (value: string): value is MessengerPlatform =>
 
 const MessengerVerifyPage = memo(() => {
   const { t } = useTranslation('messenger');
-  const [searchParams] = useSearchParams();
+  const searchParams = useSearchParams();
 
   const randomId = searchParams.get('random_id') ?? '';
   const imType = searchParams.get('im_type') ?? '';
   const platform = isSupportedPlatform(imType) ? imType : null;
 
-  const { data: session, isPending: sessionPending } = useSession();
-  const isSignedIn = !!session?.user;
+  const { session: kratosSession, loading: sessionPending } = useKratosSession();
+  const isSignedIn = !!kratosSession;
 
   // Used in the success state to deep-link the user back to the bot.
-  const platformsSWR = useSWR(messengerKeys.availablePlatforms(), () =>
+  const platformsSWR = useSWR('messenger:availablePlatforms', () =>
     messengerService.availablePlatforms(),
   );
 
-  const tokenSWR = useSWR(randomId && isSignedIn ? messengerKeys.peek(randomId) : null, async () =>
+  const tokenSWR = useSWR(randomId && isSignedIn ? ['messenger:peek', randomId] : null, async () =>
     messengerService.peekLinkToken(randomId),
   );
 
@@ -59,7 +58,7 @@ const MessengerVerifyPage = memo(() => {
   const tokenScopeKey =
     tokenStatus === 'active' || tokenStatus === 'consumed' ? (scopedTenantId ?? '') : '__any__';
   const existingLinkSWR = useSWR(
-    isSignedIn && tokenResolved && platform ? messengerKeys.myLink(platform, tokenScopeKey) : null,
+    isSignedIn && tokenResolved && platform ? ['messenger:myLink', platform, tokenScopeKey] : null,
     async () =>
       messengerService.getMyLink(
         platform!,
@@ -156,8 +155,8 @@ const MessengerVerifyPage = memo(() => {
         consumedToken?.platform ??
         platform),
   );
-  const lobeAccount = session?.user?.email ?? session?.user?.name ?? '';
-  const userAvatar = session?.user?.image ?? undefined;
+  const lobeAccount = kratosSession?.email ?? kratosSession?.name ?? '';
+  const userAvatar = kratosSession?.avatar_url ?? undefined;
 
   return (
     <Body

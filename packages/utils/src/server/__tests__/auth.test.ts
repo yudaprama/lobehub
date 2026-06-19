@@ -6,16 +6,14 @@ vi.mock('next/headers', () => ({
   headers: vi.fn(() => new Headers()),
 }));
 
-vi.mock('@/auth', () => ({
-  auth: {
-    api: {
-      getSession: vi.fn().mockResolvedValue({
-        user: {
-          id: 'better-auth-user-id',
-        },
-      }),
+vi.mock('@/libs/kratos/server-session', () => ({
+  getKratosSession: vi.fn().mockResolvedValue({
+    user: {
+      email: 'test@example.com',
+      id: 'kratos-user-id',
+      name: 'Test User',
     },
-  },
+  }),
 }));
 
 describe('getUserAuth', () => {
@@ -23,16 +21,18 @@ describe('getUserAuth', () => {
     vi.clearAllMocks();
   });
 
-  it('should return better auth session', async () => {
-    const auth = await getUserAuth();
+  it('should return Kratos session and userId', async () => {
+    const result = await getUserAuth();
 
-    expect(auth).toEqual({
-      betterAuth: {
+    expect(result).toEqual({
+      session: {
         user: {
-          id: 'better-auth-user-id',
+          email: 'test@example.com',
+          id: 'kratos-user-id',
+          name: 'Test User',
         },
       },
-      userId: 'better-auth-user-id',
+      userId: 'kratos-user-id',
     });
   });
 });

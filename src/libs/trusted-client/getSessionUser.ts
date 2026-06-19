@@ -1,5 +1,7 @@
 import { headers } from 'next/headers';
 
+import { getKratosSession } from '@/libs/kratos/server-session';
+
 import { type TrustedClientUserInfo } from './index';
 
 /**
@@ -9,12 +11,8 @@ import { type TrustedClientUserInfo } from './index';
  */
 export const getSessionUser = async (): Promise<TrustedClientUserInfo | undefined> => {
   try {
-    // Dynamic import to avoid validator ESM/CJS issue during sitemap generation
-    const { auth } = await import('@/auth');
     const headersList = await headers();
-    const session = await auth.api.getSession({
-      headers: headersList,
-    });
+    const session = await getKratosSession(headersList);
 
     if (!session?.user?.id || !session?.user?.email) {
       return undefined;

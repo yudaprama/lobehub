@@ -8,7 +8,6 @@ const mockLambdaClient = vi.hoisted(() => ({
   user: {
     getUserRegistrationDuration: { query: vi.fn() },
     getUserState: { query: vi.fn() },
-    getUserSSOProviders: { query: vi.fn() },
     makeUserOnboarded: { mutate: vi.fn() },
     updateAvatar: { mutate: vi.fn() },
     updateFullName: { mutate: vi.fn() },
@@ -53,20 +52,6 @@ describe('UserService', () => {
 
       expect(mockLambdaClient.user.getUserState.query).toHaveBeenCalled();
       expect(result).toEqual(mockState);
-    });
-  });
-
-  describe('getUserSSOProviders', () => {
-    it('should call lambdaClient.user.getUserSSOProviders.query', async () => {
-      const mockProviders = [
-        { provider: 'github', email: 'test@example.com', providerAccountId: '123' },
-      ];
-      mockLambdaClient.user.getUserSSOProviders.query.mockResolvedValueOnce(mockProviders);
-
-      const result = await userService.getUserSSOProviders();
-
-      expect(mockLambdaClient.user.getUserSSOProviders.query).toHaveBeenCalled();
-      expect(result).toEqual(mockProviders);
     });
   });
 

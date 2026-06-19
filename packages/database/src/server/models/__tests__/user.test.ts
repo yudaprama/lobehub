@@ -11,7 +11,7 @@ import { getTestDB } from '../../../core/getTestDB';
 import { SessionModel } from '../../../models/session';
 import { UserModel, UserNotFoundError } from '../../../models/user';
 import type { UserSettingsItem } from '../../../schemas';
-import { nextauthAccounts, users, userSettings } from '../../../schemas';
+import { users, userSettings } from '../../../schemas';
 
 const serverDB = await getTestDB();
 
@@ -407,37 +407,6 @@ describe('UserModel', () => {
           },
         });
       });
-    });
-  });
-
-  describe('getUserSSOProviders', () => {
-    it('should get user SSO providers from nextauth accounts', async () => {
-      // Insert a user and associated OAuth account
-      await serverDB.insert(users).values({ id: userId });
-      await serverDB.insert(nextauthAccounts).values({
-        userId,
-        type: 'oauth',
-        provider: 'github',
-        providerAccountId: '123456',
-        expires_at: Math.floor(Date.now() / 1000) + 3600, // 1 hour from now
-        scope: 'user:email',
-      } as any);
-
-      const result = await userModel.getUserSSOProviders();
-
-      expect(result).toHaveLength(1);
-      expect(result[0]).toMatchObject({
-        provider: 'github',
-        providerAccountId: '123456',
-      });
-      expect(result[0].expiresAt).toBeDefined();
-    });
-
-    it('should return empty array when no SSO providers exist', async () => {
-      await serverDB.insert(users).values({ id: userId });
-
-      const result = await userModel.getUserSSOProviders();
-      expect(result).toEqual([]);
     });
   });
 

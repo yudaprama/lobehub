@@ -3,7 +3,7 @@ import { eq, sql } from 'drizzle-orm';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { getTestDB } from '../../core/getTestDB';
-import { messages, nextauthAccounts, topics, users, userSettings } from '../../schemas';
+import { messages, topics, users, userSettings } from '../../schemas';
 import type { LobeChatDatabase } from '../../type';
 import type { ListUsersForMemoryExtractorCursor } from '../user';
 import { UserModel, UserNotFoundError } from '../user';
@@ -93,29 +93,6 @@ describe('UserModel', () => {
       const result = await userModel.getUserState(failingDecryptor);
 
       expect(result.settings.keyVaults).toEqual({});
-    });
-  });
-
-  describe('getUserSSOProviders', () => {
-    it('should return SSO providers for user', async () => {
-      await serverDB.insert(nextauthAccounts).values({
-        userId,
-        provider: 'google',
-        providerAccountId: 'google-123',
-        type: 'oauth' as any,
-      });
-
-      const result = await userModel.getUserSSOProviders();
-
-      expect(result).toHaveLength(1);
-      expect(result[0].provider).toBe('google');
-      expect(result[0].providerAccountId).toBe('google-123');
-    });
-
-    it('should return empty array when no SSO providers', async () => {
-      const result = await userModel.getUserSSOProviders();
-
-      expect(result).toHaveLength(0);
     });
   });
 

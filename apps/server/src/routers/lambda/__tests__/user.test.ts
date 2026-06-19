@@ -76,30 +76,6 @@ describe('userRouter', () => {
     });
   });
 
-  describe('getUserSSOProviders', () => {
-    it('should return SSO providers', async () => {
-      const mockProviders = [
-        {
-          provider: 'google',
-          providerAccountId: '123',
-          userId: 'user-1',
-          type: 'oauth',
-        },
-      ];
-      vi.mocked(UserModel).mockImplementation(
-        () =>
-          ({
-            getUserSSOProviders: vi.fn().mockResolvedValue(mockProviders),
-          }) as any,
-      );
-
-      const result = await userRouter.createCaller({ ...mockCtx }).getUserSSOProviders();
-
-      expect(result).toEqual(mockProviders);
-      expect(UserModel).toHaveBeenCalledWith(serverDB, mockUserId);
-    });
-  });
-
   describe('getUserState', () => {
     it('should return user state', async () => {
       const mockState = {

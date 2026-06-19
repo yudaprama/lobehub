@@ -133,14 +133,11 @@ export async function startWebServer(options: WebServerOptions): Promise<void> {
 
     const serverEnv = {
       ...process.env,
-      // APP_URL is required for Better Auth to recognize localhost as a trusted origin
+      // APP_URL is used for Kratos to recognize localhost as a trusted origin
       APP_URL: `http://localhost:${port}`,
 
       // Disable email verification for e2e
       AUTH_EMAIL_VERIFICATION: '0',
-
-      // E2E test secret keys
-      AUTH_SECRET: 'e2e-test-secret-key-for-better-auth-32chars!',
 
       KEY_VAULTS_SECRET: 'LA7n9k3JdEcbSgml2sxfw+4TV1AzaaFU5+R176aQz4s=',
       NODE_OPTIONS: '--max-old-space-size=6144',

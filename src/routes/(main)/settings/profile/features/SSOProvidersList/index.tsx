@@ -9,7 +9,7 @@ import { useTranslation } from 'react-i18next';
 
 import { notification } from '@/components/AntdStaticMethods';
 import AuthIcons from '@/components/AuthIcons';
-import { isBuiltinProvider, normalizeProviderId } from '@/libs/better-auth/utils/client';
+import { linkOidcProvider, unlinkOidcProvider } from '@/libs/kratos/settings';
 import { useServerConfigStore } from '@/store/serverConfig';
 import { serverConfigSelectors } from '@/store/serverConfig/selectors';
 import { useUserStore } from '@/store/user';
@@ -37,15 +37,11 @@ export const SSOProvidersList = memo(() => {
   }, [providers]);
 
   // Get available providers for linking (filter out already linked)
-  // Normalize provider IDs when comparing to handle aliases (e.g. microsoft-entra-id → microsoft)
   const availableProviders = useMemo(() => {
-    return (oAuthSSOProviders || []).filter(
-      (provider) => !linkedProviderIds.has(normalizeProviderId(provider)),
-    );
+    return (oAuthSSOProviders || []).filter((provider) => !linkedProviderIds.has(provider));
   }, [oAuthSSOProviders, linkedProviderIds]);
 
   const handleUnlinkSSO = async (provider: string) => {
-    // Better-auth link/unlink operations are not available on desktop
     if (isDesktop) return;
 
     // Prevent unlink if this is the only login method
@@ -61,8 +57,7 @@ export const SSOProvidersList = memo(() => {
         danger: true,
       },
       onOk: async () => {
-        const { unlinkAccount } = await import('@/libs/better-auth/auth-client');
-        await unlinkAccount({ providerId: provider });
+        await unlinkOidcProvider({ provider });
         refreshAuthProviders();
       },
       title: <span style={providerNameStyle}>{t('profile.sso.unlink.title', { provider })}</span>,
@@ -72,21 +67,9 @@ export const SSOProvidersList = memo(() => {
   const handleLinkSSO = async (provider: string) => {
     if (!enableAuthActions) return;
 
-    const normalizedProvider = normalizeProviderId(provider);
-    const { linkSocial, oauth2 } = await import('@/libs/better-auth/auth-client');
-
-    if (isBuiltinProvider(normalizedProvider)) {
-      // Use better-auth native linkSocial API for built-in providers
-      await linkSocial({
-        callbackURL: '/profile',
-        provider: normalizedProvider as any,
-      });
-      return;
-    }
-
-    await oauth2.link({
-      callbackURL: '/profile',
-      providerId: normalizedProvider,
+    await linkOidcProvider({
+      callbackURL: '/settings/profile',
+      provider,
     });
   };
 

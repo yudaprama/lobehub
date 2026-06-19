@@ -4,10 +4,10 @@ import { parse } from 'cookie';
 import debug from 'debug';
 import { type NextRequest } from 'next/server';
 
-import { auth } from '@/auth';
 import { getServerDB } from '@/database/core/db-adaptor';
 import { ApiKeyModel } from '@/database/models/apiKey';
 import { authEnv, LOBE_CHAT_OIDC_AUTH_HEADER } from '@/envs/auth';
+import { getKratosSession } from '@/libs/kratos/server-session';
 import { extractTraceContext } from '@/libs/observability/traceparent';
 import { assertOIDCUserActive, isOIDCUserInactiveError } from '@/libs/oidc-provider/access-control';
 import { validateOIDCJWT } from '@/libs/oidc-provider/jwt';
@@ -228,18 +228,16 @@ export const createLambdaContext = async (request: NextRequest): Promise<LambdaC
     }
   }
 
-  // If OIDC is not enabled or validation fails, try Better Auth authentication
-  log('Attempting Better Auth authentication');
+  // If OIDC is not enabled or validation fails, try Kratos session authentication
+  log('Attempting Kratos authentication');
   try {
-    const session = await auth.api.getSession({
-      headers: request.headers,
-    });
+    const session = await getKratosSession(request.headers);
 
-    if (session && session?.user?.id) {
+    if (session?.user?.id) {
       userId = session.user.id;
-      log('Better Auth authentication successful, userId: %s', userId);
+      log('Kratos authentication successful, userId: %s', userId);
     } else {
-      log('Better Auth authentication failed, no valid session');
+      log('Kratos authentication failed, no valid session');
     }
 
     return createContextInner({
@@ -248,8 +246,8 @@ export const createLambdaContext = async (request: NextRequest): Promise<LambdaC
       userId,
     });
   } catch (e) {
-    log('Better Auth authentication error: %O', e);
-    console.error('better auth err', e);
+    log('Kratos authentication error: %O', e);
+    console.error('kratos auth err', e);
   }
 
   // Final return, userId may be undefined
