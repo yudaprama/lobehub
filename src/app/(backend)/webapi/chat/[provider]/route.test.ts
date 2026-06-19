@@ -4,7 +4,7 @@ import { ModelRuntime } from '@lobechat/model-runtime';
 import { ChatErrorType } from '@lobechat/types';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { auth } from '@/auth';
+import { getKratosSession } from '@/libs/kratos/server-session';
 import { initModelRuntimeFromDB } from '@/server/modules/ModelRuntime';
 
 import { POST } from './route';
@@ -18,12 +18,8 @@ vi.mock('@/server/modules/ModelRuntime', () => ({
   createTraceOptions: vi.fn().mockReturnValue({}),
 }));
 
-vi.mock('@/auth', () => ({
-  auth: {
-    api: {
-      getSession: vi.fn().mockResolvedValue(null),
-    },
-  },
+vi.mock('@/libs/kratos/server-session', () => ({
+  getKratosSession: vi.fn().mockResolvedValue(null),
 }));
 
 // 模拟请求和响应
@@ -35,9 +31,8 @@ beforeEach(() => {
   });
 
   // Default: valid session
-  vi.mocked(auth.api.getSession).mockResolvedValue({
-    session: {} as any,
-    user: { id: 'test-user-id' } as any,
+  vi.mocked(getKratosSession).mockResolvedValue({
+    user: { id: 'test-user-id', email: 'test@test.com', name: 'Test' },
   });
 });
 
@@ -71,7 +66,7 @@ describe('POST handler', () => {
     });
 
     it('should return Unauthorized error when no session exists', async () => {
-      vi.mocked(auth.api.getSession).mockResolvedValue(null);
+      vi.mocked(getKratosSession).mockResolvedValue(null);
 
       const mockParams = Promise.resolve({ provider: 'test-provider' });
 

@@ -4,10 +4,10 @@ import { NextResponse } from 'next/server';
 import { UAParser } from 'ua-parser-js';
 import urlJoin from 'url-join';
 
-import { auth } from '@/auth';
 import { LOBE_LOCALE_COOKIE } from '@/const/locale';
 import { appEnv } from '@/envs/app';
 import { authEnv } from '@/envs/auth';
+import { getKratosSession } from '@/libs/kratos/server-session';
 import { type Locales } from '@/locales/resources';
 import { parseBrowserLanguage } from '@/utils/locale';
 import { DEFAULT_LANG, locales, RouteVariants } from '@/utils/server/routeVariants';
@@ -17,7 +17,7 @@ import { createRouteMatcher } from './createRouteMatcher';
 
 // Create debug logger instances
 const logDefault = debug('middleware:default');
-const logBetterAuth = debug('middleware:better-auth');
+const logKratos = debug('middleware:kratos');
 
 // Dev-only debug proxy route should bypass all middleware rewrites.
 const dangerousLocalDevProxyRoute = '/_dangerous_local_dev_proxy';
@@ -180,7 +180,7 @@ export function defineConfig() {
 
   const isPublicRoute = createRouteMatcher([
     // backend api
-    '/api/v1(.*)', // OpenAPI routes should use OpenAPI auth (API Key/OIDC), not BetterAuth session
+    '/api/v1(.*)', // OpenAPI routes should use OpenAPI auth (API Key/OIDC), not Kratos session
     '/api/auth(.*)',
     '/api/webhooks(.*)',
     '/api/workflows(.*)',
@@ -223,27 +223,25 @@ export function defineConfig() {
     '/verify-im',
   ]);
 
-  const betterAuthMiddleware = async (req: NextRequest) => {
-    logBetterAuth('BetterAuth middleware processing request: %s %s', req.method, req.url);
+  const authMiddleware = async (req: NextRequest) => {
+    logKratos('Kratos middleware processing request: %s %s', req.method, req.url);
 
     const response = defaultMiddleware(req);
 
     // when enable auth protection, only public route is not protected, others are all protected
     const isProtected = !isPublicRoute(req);
 
-    logBetterAuth('Route protection status: %s, %s', req.url, isProtected ? 'protected' : 'public');
+    logKratos('Route protection status: %s, %s', req.url, isProtected ? 'protected' : 'public');
 
     // Skip session lookup for public routes to reduce latency
     if (!isProtected) return response;
 
     // Get full session with user data (Next.js 15.2.0+ feature)
-    const session = await auth.api.getSession({
-      headers: req.headers,
-    });
+    const session = await getKratosSession(req.headers);
 
     const isLoggedIn = !!session?.user;
 
-    logBetterAuth('BetterAuth session status: %O', {
+    logKratos('Kratos session status: %O', {
       isLoggedIn,
       userId: session?.user?.id,
     });
@@ -251,7 +249,7 @@ export function defineConfig() {
     if (!isLoggedIn) {
       // If request a protected route, redirect to sign-in page
       if (isProtected) {
-        logBetterAuth('Request a protected route, redirecting to sign-in page');
+        logKratos('Request a protected route, redirecting to sign-in page');
 
         const callbackUrl = `${appEnv.APP_URL}${req.nextUrl.pathname}${req.nextUrl.search}`;
         const signInUrl = new URL('/signin', appEnv.APP_URL);
@@ -259,18 +257,18 @@ export function defineConfig() {
         const hl = req.nextUrl.searchParams.get('hl');
         if (hl) {
           signInUrl.searchParams.set('hl', hl);
-          logBetterAuth('Preserving locale to sign-in: hl=%s', hl);
+          logKratos('Preserving locale to sign-in: hl=%s', hl);
         }
         // Preserve marketing attribution (e.g. sign-ups originating from Market)
         // so it survives the auth detour and reaches the sign-up page.
         const utmSource = req.nextUrl.searchParams.get('utm_source');
         if (utmSource) {
           signInUrl.searchParams.set('utm_source', utmSource);
-          logBetterAuth('Preserving utm_source to sign-in: %s', utmSource);
+          logKratos('Preserving utm_source to sign-in: %s', utmSource);
         }
         return Response.redirect(signInUrl);
       }
-      logBetterAuth('Request a free route but not login, allow visit without auth header');
+      logKratos('Request a free route but not login, allow visit without auth header');
     }
 
     return response;
@@ -278,5 +276,5 @@ export function defineConfig() {
 
   logDefault('Middleware configuration: %O', { enableOIDC: authEnv.ENABLE_OIDC });
 
-  return { middleware: betterAuthMiddleware };
+  return { middleware: authMiddleware };
 }

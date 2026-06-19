@@ -1,5 +1,6 @@
 import { type SSOProvider } from '@lobechat/types';
 
+import { kratos } from '@/libs/kratos/sdk';
 import { type StoreSetter } from '@/store/types';
 
 import { type UserStore } from '../../store';
@@ -10,26 +11,15 @@ interface AuthProvidersData {
 }
 
 const fetchAuthProvidersData = async (): Promise<AuthProvidersData> => {
-  const { accountInfo, listAccounts } = await import('@/libs/better-auth/auth-client');
-  const result = await listAccounts();
-  const accounts = result.data || [];
-  const hasPasswordAccount = accounts.some((account) => account.providerId === 'credential');
-  const providers = await Promise.all(
-    accounts
-      .filter((account) => account.providerId !== 'credential')
-      .map(async (account) => {
-        // In theory, the id_token could be decrypted from the accounts table, but I found that better-auth on GitHub does not save the id_token
-        const info = await accountInfo({
-          query: { accountId: account.accountId },
-        });
-        return {
-          email: info.data?.user?.email ?? undefined,
-          provider: account.providerId,
-          providerAccountId: account.accountId,
-        };
-      }),
-  );
-  return { hasPasswordAccount, providers };
+  try {
+    const { data } = await kratos.toSession();
+    if (!data?.identity) {
+      return { hasPasswordAccount: false, providers: [] };
+    }
+    return { hasPasswordAccount: true, providers: [] };
+  } catch {
+    return { hasPasswordAccount: false, providers: [] };
+  }
 };
 
 type Setter = StoreSetter<UserStore>;
@@ -47,7 +37,6 @@ export class UserAuthActionImpl {
   }
 
   fetchAuthProviders = async (): Promise<void> => {
-    // Skip if already loaded
     if (this.#get().isLoadedAuthProviders) return;
 
     try {
@@ -60,30 +49,23 @@ export class UserAuthActionImpl {
   };
 
   logout = async (): Promise<void> => {
-    // Clear the OIDC Provider session for the current browser *before*
-    // destroying the better-auth session. This prevents a stale OIDC session
-    // from silently issuing tokens for the old account after the user signs
-    // in as someone else.
     try {
       await fetch('/oidc/clear-session', { method: 'POST' });
     } catch {
-      // Best-effort: don't block sign-out if the cleanup request fails
+      // best-effort
     }
 
-    const { signOut } = await import('@/libs/better-auth/auth-client');
-    await signOut({
-      fetchOptions: {
-        onSuccess: () => {
-          // Use window.location.href to trigger a full page reload
-          // This ensures all client-side state (React, Zustand, cache) is cleared
-          window.location.href = '/signin';
-        },
-      },
-    });
+    try {
+      const { data: logoutFlow } = await kratos.createBrowserLogoutFlow();
+      await kratos.updateLogoutFlow({ token: logoutFlow.logout_token });
+    } catch {
+      // fall through to redirect
+    }
+
+    window.location.href = '/signin';
   };
 
   openLogin = async (): Promise<void> => {
-    // Skip if already on a login page (/signin, /signup)
     const pathname = location.pathname;
     if (pathname.startsWith('/signin') || pathname.startsWith('/signup')) {
       return;

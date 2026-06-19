@@ -23,12 +23,8 @@ const {
   mockValidateOIDCJWT: vi.fn(),
 }));
 
-vi.mock('@/auth', () => ({
-  auth: {
-    api: {
-      getSession: mockGetSession,
-    },
-  },
+vi.mock('@/libs/kratos/server-session', () => ({
+  getKratosSession: mockGetSession,
 }));
 
 vi.mock('@/database/core/db-adaptor', () => ({
