@@ -20,9 +20,7 @@ import { homeRouter } from '../lambda/home';
 import { knowledgeBaseRouter } from '../lambda/knowledgeBase';
 import { marketRouter } from '../lambda/market';
 import { messageRouter } from '../lambda/message';
-import { pushTokenRouter } from '../lambda/pushToken';
 import { sessionRouter } from '../lambda/session';
-import { sessionGroupRouter } from '../lambda/sessionGroup';
 import { taskRouter } from '../lambda/task';
 import { topicRouter } from '../lambda/topic';
 import { userRouter } from '../lambda/user';
@@ -44,9 +42,7 @@ export const mobileRouter = router({
   knowledgeBase: knowledgeBaseRouter,
   market: marketRouter,
   message: messageRouter,
-  pushToken: pushTokenRouter,
   session: sessionRouter,
-  sessionGroup: sessionGroupRouter,
   subscription: mobileSubscriptionRouter,
   task: taskRouter,
   topic: topicRouter,

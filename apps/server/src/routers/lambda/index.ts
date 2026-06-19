@@ -36,19 +36,16 @@ import { homeRouter } from './home';
 import { imageRouter } from './image';
 import { importerRouter } from './importer';
 import { knowledgeBaseRouter } from './knowledgeBase';
-import { llmGenerationTracingRouter } from './llmGenerationTracing';
 import { marketRouter } from './market';
 import { messageRouter } from './message';
 import { messengerRouter } from './messenger';
 import { notebookRouter } from './notebook';
 import { oauthDeviceFlowRouter } from './oauthDeviceFlow';
 import { pluginRouter } from './plugin';
-import { pushTokenRouter } from './pushToken';
 import { ragEvalRouter } from './ragEval';
 import { recentRouter } from './recent';
 import { searchRouter } from './search';
 import { sessionRouter } from './session';
-import { sessionGroupRouter } from './sessionGroup';
 import { shareRouter } from './share';
 import { taskRouter } from './task';
 import { threadRouter } from './thread';
@@ -92,19 +89,16 @@ export const lambdaRouter = router({
   importer: importerRouter,
   composio: composioRouter,
   knowledgeBase: knowledgeBaseRouter,
-  llmGenerationTracing: llmGenerationTracingRouter,
   market: marketRouter,
   message: messageRouter,
   messenger: messengerRouter,
   notebook: notebookRouter,
   oauthDeviceFlow: oauthDeviceFlowRouter,
   plugin: pluginRouter,
-  pushToken: pushTokenRouter,
   ragEval: ragEvalRouter,
   recent: recentRouter,
   search: searchRouter,
   session: sessionRouter,
-  sessionGroup: sessionGroupRouter,
   share: shareRouter,
   thread: threadRouter,
   topic: topicRouter,

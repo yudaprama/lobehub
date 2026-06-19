@@ -113,24 +113,37 @@ export class SessionService {
   // ***********  SessionGroup  *********** //
   // ************************************** //
 
-  createSessionGroup = (name: string, sort?: number): Promise<string> => {
-    return lambdaClient.sessionGroup.createSessionGroup.mutate({ name, sort });
+  createSessionGroup = async (name: string, sort?: number): Promise<string> => {
+    const client = await getPrestClient();
+    const { data } = await client
+      .from('session_groups')
+      .insert({ name, sort })
+      .single();
+    return data?.id;
   };
 
-  removeSessionGroup = (id: string, removeChildren?: boolean) => {
-    return lambdaClient.sessionGroup.removeSessionGroup.mutate({ id, removeChildren });
+  removeSessionGroup = async (id: string) => {
+    const client = await getPrestClient();
+    await client.from('session_groups').eq('id', id).delete();
   };
 
-  removeSessionGroups = () => {
-    return lambdaClient.sessionGroup.removeAllSessionGroups.mutate();
+  removeSessionGroups = async () => {
+    const client = await getPrestClient();
+    await client.from('session_groups').delete();
   };
 
-  updateSessionGroup = (id: string, value: Partial<SessionGroupItem>) => {
-    return lambdaClient.sessionGroup.updateSessionGroup.mutate({ id, value });
+  updateSessionGroup = async (id: string, value: Partial<SessionGroupItem>) => {
+    const client = await getPrestClient();
+    await client.from('session_groups').eq('id', id).patch(value);
   };
 
-  updateSessionGroupOrder = (sortMap: { id: string; sort: number }[]) => {
-    return lambdaClient.sessionGroup.updateSessionGroupOrder.mutate({ sortMap });
+  updateSessionGroupOrder = async (sortMap: { id: string; sort: number }[]) => {
+    const client = await getPrestClient();
+    await Promise.all(
+      sortMap.map(({ id, sort }) =>
+        client.from('session_groups').eq('id', id).patch({ sort }),
+      ),
+    );
   };
 }
 
