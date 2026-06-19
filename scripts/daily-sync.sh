@@ -88,9 +88,11 @@ if ! command -v gh >/dev/null 2>&1; then
   exit 0
 fi
 
+PERSONAL_REPO="$(git remote get-url "$PERSONAL" | sed 's#.*github.com[:/]##; s#\.git$##; s#/$##')"
+
 # Check if an open PR from $BRANCH -> $TARGET already exists
 EXISTING_PR=$(gh pr list \
-  --repo "$PERSONAL/$(git remote get-url "$PERSONAL" | sed 's#.*[:/]##; s#\.git$##')" \
+  --repo "$PERSONAL_REPO" \
   --head "$BRANCH" \
   --base "$TARGET" \
   --state open \
@@ -103,7 +105,7 @@ if [[ -n "$EXISTING_PR" ]]; then
 else
   echo "==> Creating PR: ${BRANCH} -> ${TARGET}..."
   PR_URL=$(gh pr create \
-    --repo "$PERSONAL/$(git remote get-url "$PERSONAL" | sed 's#.*[:/]##; s#\.git$##')" \
+    --repo "$PERSONAL_REPO" \
     --base "$TARGET" \
     --head "$BRANCH" \
     --title "$PR_TITLE" \
@@ -121,7 +123,7 @@ sleep 3
 
 # Fetch latest PR status from GitHub
 PR_STATUS=$(gh pr view "$PR_NUMBER" \
-  --repo "$PERSONAL/$(git remote get-url "$PERSONAL" | sed 's#.*[:/]##; s#\.git$##')" \
+  --repo "$PERSONAL_REPO" \
   --json mergeable,mergeStateStatus \
   --jq '{ mergeable: .mergeable, state: .mergeStateStatus }' 2>/dev/null || echo '{"mergeable":"UNKNOWN","state":"UNKNOWN"}')
 
@@ -133,12 +135,12 @@ echo "==> PR #${PR_NUMBER} mergeable=${MERGEABLE} state=${MERGE_STATE}"
 if [[ "$MERGEABLE" == "MERGEABLE" && "$MERGE_STATE" == "clean" ]]; then
   echo "==> No conflicts — merging PR #${PR_NUMBER}..."
   gh pr merge "$PR_NUMBER" \
-    --repo "$PERSONAL/$(git remote get-url "$PERSONAL" | sed 's#.*[:/]##; s#\.git$##')" \
+    --repo "$PERSONAL_REPO" \
     --merge \
     --auto 2>&1 || {
     echo "WARN: Auto-merge failed, trying direct merge..."
     gh pr merge "$PR_NUMBER" \
-      --repo "$PERSONAL/$(git remote get-url "$PERSONAL" | sed 's#.*[:/]##; s#\.git$##')" \
+      --repo "$PERSONAL_REPO" \
       --merge 2>&1 || echo "WARN: Merge failed — resolve manually"
   }
   echo "==> Pulling ${TARGET} from ${PERSONAL}..."
@@ -147,7 +149,7 @@ if [[ "$MERGEABLE" == "MERGEABLE" && "$MERGE_STATE" == "clean" ]]; then
   git pull "$PERSONAL" "$TARGET" --quiet || echo "WARN: pull failed — resolve manually"
 else
   echo "==> PR #${PR_NUMBER} has conflicts or is not ready (state=${MERGE_STATE})"
-  echo "    Resolve manually: gh pr view ${PR_NUMBER} --repo $PERSONAL/$(git remote get-url "$PERSONAL" | sed 's#.*[:/]##; s#\.git$##')"
+  echo "    Resolve manually: gh pr view ${PR_NUMBER} --repo $PERSONAL_REPO"
 fi
 
 echo "==> Done."
