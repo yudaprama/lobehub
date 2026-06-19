@@ -25,7 +25,6 @@ import { sessionRouter } from '../lambda/session';
 import { sessionGroupRouter } from '../lambda/sessionGroup';
 import { taskRouter } from '../lambda/task';
 import { topicRouter } from '../lambda/topic';
-import { uploadRouter } from '../lambda/upload';
 import { userRouter } from '../lambda/user';
 
 export const mobileRouter = router({
@@ -51,6 +50,5 @@ export const mobileRouter = router({
   subscription: mobileSubscriptionRouter,
   task: taskRouter,
   topic: topicRouter,
-  upload: uploadRouter,
   user: userRouter,
 });
