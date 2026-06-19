@@ -23,12 +23,12 @@ import { after } from 'next/server';
 import { v4 as uuidv4 } from 'uuid';
 import { z } from 'zod';
 
+import { checkWorkspacePermission } from '@/business/server/trpc-middlewares/ketoClient';
 import {
   getReferralStatus,
   getSubscriptionPlan,
   onUserActivityForBusiness,
 } from '@/business/server/user';
-import { checkWorkspacePermission } from '@/business/server/trpc-middlewares/ketoClient';
 import { MessageModel } from '@/database/models/message';
 import { SessionModel } from '@/database/models/session';
 import { UserModel } from '@/database/models/user';
@@ -96,10 +96,6 @@ const userProcedure = authedProcedure.use(serverDatabase).use(async ({ ctx, next
 export const userRouter = router({
   getUserRegistrationDuration: userProcedure.query(async ({ ctx }) => {
     return ctx.userModel.getUserRegistrationDuration();
-  }),
-
-  getUserSSOProviders: userProcedure.query(async ({ ctx }) => {
-    return ctx.userModel.getUserSSOProviders();
   }),
 
   getUserState: userProcedure.query(async ({ ctx }): Promise<UserInitializationState> => {

@@ -1,5 +1,4 @@
 import type {
-  SSOProvider,
   UserGeneralConfig,
   UserGuide,
   UserKeyVaults,
@@ -15,7 +14,7 @@ import { merge } from '@/utils/merge';
 import { today } from '@/utils/time';
 
 import type { NewUser, UserItem, UserSettingsItem } from '../schemas';
-import { messages, nextauthAccounts, topics, users, userSettings } from '../schemas';
+import { messages, topics, users, userSettings } from '../schemas';
 import type { LobeChatDatabase } from '../type';
 
 type DecryptUserKeyVaults = (
@@ -159,17 +158,6 @@ export class UserModel {
       userId: this.userId,
       username: state.username || undefined,
     };
-  };
-
-  getUserSSOProviders = async (): Promise<SSOProvider[]> => {
-    return this.db
-      .select({
-        expiresAt: nextauthAccounts.expires_at,
-        provider: nextauthAccounts.provider,
-        providerAccountId: nextauthAccounts.providerAccountId,
-      })
-      .from(nextauthAccounts)
-      .where(eq(nextauthAccounts.userId, this.userId));
   };
 
   getUserSettings = async () => {
