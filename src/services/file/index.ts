@@ -1,6 +1,7 @@
 import { CUSTOM_DOCUMENT_FILE_TYPE, DERIVED_DOCUMENT_SOURCE_TYPE } from '@lobechat/const';
 
 import { getAlistClient } from '@/libs/alist/client';
+import { getLobehubClient } from '@/libs/prest/client';
 import { lambdaClient } from '@/libs/trpc/client';
 import {
   type CheckFileHashResult,
@@ -50,21 +51,22 @@ export class FileService {
       }
     }
 
-    const item = await lambdaClient.file.findById.query({ id });
+    const db = await getLobehubClient();
+    const [row] = await db.select('files', { where: { id }, size: 1 });
 
-    if (!item) {
+    if (!row) {
       throw new Error('file not found');
     }
 
     return {
-      createdAt: item.createdAt,
-      id: item.id,
-      name: item.name,
-      size: item.size,
-      source: item.source,
-      type: item.fileType,
-      updatedAt: item.updatedAt,
-      url: item.url,
+      createdAt: new Date(row.created_at),
+      id: row.id,
+      name: row.name,
+      size: row.size,
+      source: row.source ?? undefined,
+      type: row.file_type,
+      updatedAt: new Date(row.updated_at),
+      url: row.url,
     };
   };
 
@@ -147,8 +149,9 @@ export class FileService {
   getKnowledgeItem = async (id: string) => {
     // Detect type based on ID prefix
     if (id.startsWith('docs_')) {
-      // Document (including folders) - use document endpoint
-      const doc = await lambdaClient.document.getDocumentById.query({ id });
+      // Document (including folders) - use pREST direct select
+      const db = await getLobehubClient();
+      const [doc] = await db.select('documents', { where: { id }, size: 1 });
       if (!doc) return null;
 
       // Convert document to FileListItem format
@@ -157,25 +160,44 @@ export class FileService {
         chunkingError: null,
         chunkingStatus: null,
         content: doc.content,
-        createdAt: doc.createdAt ? new Date(doc.createdAt) : new Date(),
-        editorData: doc.editorData,
+        createdAt: doc.created_at ? new Date(doc.created_at) : new Date(),
+        editorData: doc.editor_data,
         embeddingError: null,
         embeddingStatus: null,
-        fileType: doc.fileType || CUSTOM_DOCUMENT_FILE_TYPE,
+        fileType: doc.file_type || CUSTOM_DOCUMENT_FILE_TYPE,
         finishEmbedding: false,
         id: doc.id,
         metadata: doc.metadata,
         name: doc.title || doc.filename || 'Untitled',
-        parentId: doc.parentId,
-        size: doc.totalCharCount || 0,
+        parentId: doc.parent_id,
+        size: doc.total_char_count || 0,
         slug: doc.slug,
         sourceType: DERIVED_DOCUMENT_SOURCE_TYPE,
-        updatedAt: doc.updatedAt ? new Date(doc.updatedAt) : new Date(),
+        updatedAt: doc.updated_at ? new Date(doc.updated_at) : new Date(),
         url: doc.source || '',
       } as FileListItem;
     } else {
-      // File - use dedicated file endpoint
-      return lambdaClient.file.getFileItemById.query({ id });
+      // File - use pREST direct select
+      const db = await getLobehubClient();
+      const [row] = await db.select('files', { where: { id }, size: 1 });
+      if (!row) return null;
+
+      return {
+        chunkCount: 0,
+        chunkingError: null,
+        chunkingStatus: null,
+        createdAt: new Date(row.created_at),
+        embeddingError: null,
+        embeddingStatus: null,
+        fileType: row.file_type,
+        finishEmbedding: row.embedding_task_id === null,
+        id: row.id,
+        name: row.name,
+        size: row.size,
+        sourceType: 'file' as const,
+        updatedAt: new Date(row.updated_at),
+        url: row.url,
+      } as FileListItem;
     }
   };
 
@@ -193,7 +215,16 @@ export class FileService {
   };
 
   removeFileAsyncTask = async (id: string, type: 'embedding' | 'chunk') => {
-    return lambdaClient.file.removeFileAsyncTask.mutate({ id, type });
+    const db = await getLobehubClient();
+    const [file] = await db.select('files', { where: { id }, size: 1 });
+    if (!file) return;
+
+    const taskId = type === 'embedding' ? file.embedding_task_id : file.chunk_task_id;
+    if (!taskId) return;
+
+    const nullField = type === 'embedding' ? 'embedding_task_id' : 'chunk_task_id';
+    await db.update('files', { id }, { [nullField]: null });
+    await db.delete('async_tasks', { id: taskId });
   };
 
   updateFile = async (

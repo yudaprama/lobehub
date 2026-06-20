@@ -32,8 +32,17 @@ export interface LobehubTables extends TableMap {
     input: { id: string; name: string };
   };
   api_keys: {
-    select: { id: string; name: string; api_key: string; created_at: string };
-    input: { id: string; name: string; api_key: string };
+    select: {
+      id: string; name: string; key: string; key_hash: string | null;
+      description: string | null; enabled: boolean | null;
+      expires_at: string | null; last_used_at: string | null;
+      user_id: string; workspace_id: string | null;
+      created_at: string; updated_at: string;
+    };
+    input: {
+      id: string; name: string; key: string; key_hash?: string | null;
+      description?: string | null; enabled?: boolean | null; expires_at?: string | null;
+    };
   };
   async_tasks: {
     select: {
@@ -44,17 +53,42 @@ export interface LobehubTables extends TableMap {
   };
   documents: {
     select: {
-      id: string; name: string; url: string; file_type: string;
-      size: number; created_at: string;
+      id: string; title: string | null; description: string | null;
+      content: string | null; file_type: string; filename: string | null;
+      total_char_count: number; total_line_count: number;
+      metadata: Record<string, unknown> | null; pages: unknown;
+      source_type: string; source: string;
+      file_id: string | null; knowledge_base_id: string | null;
+      parent_id: string | null; user_id: string; client_id: string | null;
+      editor_data: Record<string, unknown> | null; slug: string | null;
+      workspace_id: string | null;
+      created_at: string; updated_at: string;
     };
-    input: { id: string; name: string; url: string; file_type: string; size: number };
+    input: {
+      id?: string; title?: string | null; description?: string | null;
+      content?: string | null; file_type: string; filename?: string | null;
+      source_type?: string; source?: string;
+      file_id?: string | null; knowledge_base_id?: string | null;
+      parent_id?: string | null; editor_data?: Record<string, unknown> | null;
+      slug?: string | null; metadata?: Record<string, unknown> | null;
+    };
   };
   files: {
     select: {
-      id: string; name: string; url: string; file_type: string;
-      size: number; created_at: string;
+      id: string; user_id: string; file_type: string;
+      file_hash: string | null; name: string; size: number;
+      url: string; source: string | null;
+      parent_id: string | null; client_id: string | null;
+      metadata: Record<string, unknown> | null;
+      chunk_task_id: string | null; embedding_task_id: string | null;
+      workspace_id: string | null;
+      created_at: string; updated_at: string;
     };
-    input: { id: string; name: string; url: string; file_type: string; size: number };
+    input: {
+      id?: string; name: string; url: string; file_type: string; size: number;
+      source?: string | null; parent_id?: string | null;
+      metadata?: Record<string, unknown> | null; file_hash?: string | null;
+    };
   };
   generation_batches: {
     select: {
@@ -191,10 +225,24 @@ export interface LobehubTables extends TableMap {
   };
   briefs: {
     select: {
-      id: string; task_id: string; content: string; resolved_at: string | null;
-      created_at: string; updated_at: string;
+      id: string; user_id: string; workspace_id: string | null;
+      task_id: string | null; cron_job_id: string | null;
+      topic_id: string | null; agent_id: string | null;
+      type: string; priority: string | null;
+      title: string; summary: string;
+      artifacts: unknown; actions: unknown;
+      resolved_action: string | null; resolved_comment: string | null;
+      read_at: string | null; resolved_at: string | null;
+      trigger: string | null; metadata: unknown;
+      created_at: string;
     };
-    input: { id: string; task_id: string; content: string };
+    input: {
+      id: string; type: string; title: string; summary: string;
+      task_id?: string | null; cron_job_id?: string | null;
+      topic_id?: string | null; agent_id?: string | null;
+      priority?: string | null; artifacts?: unknown; actions?: unknown;
+      trigger?: string | null; metadata?: unknown;
+    };
   };
   chunks: {
     select: {
@@ -227,14 +275,6 @@ export interface LobehubTables extends TableMap {
   embeddings: {
     select: { id: string; chunk_id: string; model: string; dimensions: number; created_at: string };
     input: { id: string; chunk_id: string; model: string; dimensions: number };
-  };
-  llm_generation_tracing: {
-    select: {
-      id: string; provider: string; model: string; request_type: string;
-      input_tokens: number | null; output_tokens: number | null;
-      duration_ms: number | null; created_at: string;
-    };
-    input: { id: string; provider: string; model: string; request_type: string };
   };
   messenger_account_links: {
     select: {
@@ -395,6 +435,45 @@ export interface LobehubTables extends TableMap {
       created_at: string; updated_at: string;
     };
     input: { id: string; device_id: string; identity_source: string };
+  };
+
+  // ─── Workspace tables (Phase 2 — Tier 1 via [[auth.workspace_id_filters]]) ─
+  workspaces: {
+    select: {
+      id: string; slug: string; name: string; description: string | null;
+      avatar: string | null; primary_owner_id: string;
+      settings: Record<string, unknown> | null;
+      created_at: string; updated_at: string;
+    };
+    input: { id: string; slug: string; name: string; primary_owner_id: string };
+  };
+  workspace_members: {
+    select: {
+      workspace_id: string; user_id: string; role: string;
+      joined_at: string; updated_at: string; deleted_at: string | null;
+    };
+    input: { workspace_id: string; user_id: string; role?: string };
+  };
+  workspace_invitations: {
+    select: {
+      id: string; workspace_id: string; inviter_id: string;
+      email: string | null; role: string; token: string;
+      status: string; expires_at: string;
+      created_at: string; updated_at: string;
+    };
+    input: {
+      id: string; workspace_id: string; inviter_id: string;
+      token: string; expires_at: string;
+    };
+  };
+  workspace_audit_logs: {
+    select: {
+      id: string; workspace_id: string; user_id: string | null;
+      action: string; resource_type: string | null; resource_id: string | null;
+      metadata: Record<string, unknown> | null; ip_address: string | null;
+      created_at: string;
+    };
+    input: { id: string; workspace_id: string; action: string };
   };
 }
 

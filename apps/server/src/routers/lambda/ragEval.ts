@@ -27,7 +27,7 @@ import {
 } from '@/database/models/ragEval';
 import { router } from '@/libs/trpc/lambda';
 import { serverDatabase } from '@/libs/trpc/lambda/middleware';
-import { createAsyncCaller } from '@/server/routers/async';
+import { enqueueRagEval, isRiverHealthy } from '@/server/rivers/riverProducer';
 import { FileService } from '@/server/services/file';
 
 const ragEvalProcedure = wsCompatProcedure.use(serverDatabase).use(async (opts) => {
@@ -41,7 +41,7 @@ const ragEvalProcedure = wsCompatProcedure.use(serverDatabase).use(async (opts) 
       datasetRecordModel: new EvalDatasetRecordModel(ctx.serverDB, ctx.userId, wsId),
       evaluationModel: new EvalEvaluationModel(ctx.serverDB, ctx.userId, wsId),
       evaluationRecordModel: new EvaluationRecordModel(ctx.serverDB, ctx.userId, wsId),
-      fileService: new FileService(ctx.serverDB, ctx.userId, wsId),
+      fileService: new FileService(ctx.serverDB, ctx.userId, wsId, ctx.kratosSessionToken),
     },
   });
 });
@@ -203,26 +203,38 @@ export const ragEvalRouter = router({
         })),
       );
 
-      // Async router will read keyVaults from DB, no need to pass jwtPayload
-      const asyncCaller = await createAsyncCaller({
-        userId: ctx.userId,
-      });
+      // Enqueue River jobs for each eval record. The Go worker
+      // (egent-jobs/rageval) processes embed → retrieve → generate.
+      const wsId = ctx.workspaceId ?? undefined;
 
       await ctx.evaluationModel.update(input.id, { status: EvalEvaluationStatus.Processing });
+
+      if (!(await isRiverHealthy())) {
+        await ctx.evaluationModel.update(input.id, { status: EvalEvaluationStatus.Error });
+        throw new TRPCError({
+          code: 'SERVICE_UNAVAILABLE',
+          message: 'River queue unavailable; cannot start evaluation',
+        });
+      }
+
       try {
         await pMap(
           evalRecords,
           async (record) => {
-            asyncCaller.ragEval
-              .runRecordEvaluation({ evalRecordId: record.id })
-              .catch(async (e) => {
-                await ctx.evaluationModel.update(input.id, { status: EvalEvaluationStatus.Error });
-
-                throw new TRPCError({
-                  code: 'BAD_GATEWAY',
-                  message: `[ASYNC_TASK] Failed to start evaluation task: ${e.message}`,
-                });
+            try {
+              await enqueueRagEval({
+                evalRecordId: record.id,
+                userId: ctx.userId,
+                workspaceId: wsId,
               });
+            } catch (e) {
+              await ctx.evaluationModel.update(input.id, { status: EvalEvaluationStatus.Error });
+
+              throw new TRPCError({
+                code: 'BAD_GATEWAY',
+                message: `[RIVER] Failed to enqueue evaluation: ${(e as Error).message}`,
+              });
+            }
           },
           {
             concurrency: 30,

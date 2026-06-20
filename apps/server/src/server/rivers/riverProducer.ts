@@ -17,11 +17,13 @@ import type { LobeChatDatabase } from '@/database/type';
 export const RiverJobKind = {
   EmbedFileChunks: 'embed_file_chunks',
   ParseFileToChunks: 'parse_file_to_chunks',
+  RagEval: 'rag_eval_record_evaluation',
 } as const;
 
 export const RiverQueue = {
   FileIngest: 'file_ingest',
   MediaGen: 'media_gen',
+  RagEval: 'rag_eval',
 } as const;
 
 export interface EmbedFileChunksArgs {
@@ -37,6 +39,12 @@ export interface ParseFileToChunksArgs {
   userId: string;
   workspaceId?: string;
   skipExist?: boolean;
+}
+
+export interface RagEvalArgs {
+  evalRecordId: string;
+  userId: string;
+  workspaceId?: string;
 }
 
 export interface RiverEnqueueOptions {
@@ -64,6 +72,13 @@ export class RiverProducer {
 
   async enqueueParseFileToChunks(args: ParseFileToChunksArgs, opts?: RiverEnqueueOptions) {
     return this.insert(RiverJobKind.ParseFileToChunks, args, opts);
+  }
+
+  async enqueueRagEval(args: RagEvalArgs, opts?: RiverEnqueueOptions) {
+    return this.insert(RiverJobKind.RagEval, args, {
+      ...opts,
+      queue: opts?.queue ?? RiverQueue.RagEval,
+    });
   }
 
   private async insert(kind: string, args: unknown, opts?: RiverEnqueueOptions) {
@@ -140,6 +155,11 @@ export async function enqueueParseFileToChunks(
 ) {
   const p = await getProducer();
   return p.enqueueParseFileToChunks(args, opts);
+}
+
+export async function enqueueRagEval(args: RagEvalArgs, opts?: RiverEnqueueOptions) {
+  const p = await getProducer();
+  return p.enqueueRagEval(args, opts);
 }
 
 /**
