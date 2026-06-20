@@ -1,7 +1,7 @@
 import { CUSTOM_DOCUMENT_FILE_TYPE, DERIVED_DOCUMENT_SOURCE_TYPE } from '@lobechat/const';
 
 import { getAlistClient } from '@/libs/alist/client';
-import { getLobehubClient } from '@/libs/prest/client';
+import { getLobehubClient, getPrestClient, getWorkspaceParams } from '@/libs/prest/client';
 import { lambdaClient } from '@/libs/trpc/client';
 import {
   type CheckFileHashResult,
@@ -133,7 +133,14 @@ export class FileService {
   };
 
   getKnowledgeItemStatusesByIds = async (ids: string[]): Promise<KnowledgeItemStatus[]> => {
-    return lambdaClient.file.getKnowledgeItemStatusesByIds.query({ ids });
+    if (ids.length === 0) return [];
+
+    const client = await getPrestClient();
+    const rows = await client.query<KnowledgeItemStatus>('lobehub', 'knowledgeItemStatuses', {
+      ids: [...new Set(ids)].join(','),
+      ...getWorkspaceParams(),
+    });
+    return rows;
   };
 
   resolveKnowledgeItemIds = async (params: QueryFileListParams) => {

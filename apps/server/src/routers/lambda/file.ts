@@ -354,25 +354,6 @@ export const fileRouter = router({
     return resultFiles;
   }),
 
-  getKnowledgeItemStatusesByIds: fileProcedure
-    .input(
-      z.object({
-        ids: z.array(z.string()),
-      }),
-    )
-    .query(async ({ ctx, input }): Promise<KnowledgeItemStatus[]> => {
-      const ids = [...new Set(input.ids)];
-      if (ids.length === 0) return [];
-
-      const fileItems = await ctx.fileModel.findByIds(ids);
-      const statusMap = await getKnowledgeItemStatusMap(ctx, fileItems);
-
-      return ids.flatMap((id) => {
-        const status = statusMap.get(id);
-        return status ? [status] : [];
-      });
-    }),
-
   getKnowledgeItems: fileProcedure.input(QueryFileListSchema).query(async ({ ctx, input }) => {
     // Request one more item than limit to check if there are more items
     const limit = input.limit ?? 50;

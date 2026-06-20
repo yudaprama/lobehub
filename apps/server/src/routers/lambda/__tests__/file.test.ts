@@ -691,60 +691,6 @@ describe('fileRouter', () => {
     });
   });
 
-  describe('getKnowledgeItemStatusesByIds', () => {
-    it('should return lightweight status fields in input order and skip missing ids', async () => {
-      mockFileModelFindByIds.mockResolvedValue([
-        {
-          ...mockFile,
-          chunkTaskId: null,
-          embeddingTaskId: 'emb-2',
-          id: 'file-2',
-        },
-        {
-          ...mockFile,
-          chunkTaskId: 'chunk-1',
-          embeddingTaskId: 'emb-1',
-          id: 'file-1',
-        },
-      ]);
-      mockChunkCountByFileIds.mockResolvedValue([
-        { count: 3, id: 'file-2' },
-        { count: 10, id: 'file-1' },
-      ]);
-      mockAsyncTaskFindByIds
-        .mockResolvedValueOnce([{ error: null, id: 'chunk-1', status: AsyncTaskStatus.Success }])
-        .mockResolvedValueOnce([
-          { error: null, id: 'emb-2', status: AsyncTaskStatus.Processing },
-          { error: null, id: 'emb-1', status: AsyncTaskStatus.Success },
-        ]);
-
-      const result = await caller.getKnowledgeItemStatusesByIds({
-        ids: ['file-2', 'missing-id', 'file-1'],
-      });
-
-      expect(result).toEqual([
-        {
-          chunkCount: 3,
-          chunkingError: null,
-          chunkingStatus: null,
-          embeddingError: null,
-          embeddingStatus: AsyncTaskStatus.Processing,
-          finishEmbedding: false,
-          id: 'file-2',
-        },
-        {
-          chunkCount: 10,
-          chunkingError: null,
-          chunkingStatus: AsyncTaskStatus.Success,
-          embeddingError: null,
-          embeddingStatus: AsyncTaskStatus.Success,
-          finishEmbedding: true,
-          id: 'file-1',
-        },
-      ]);
-    });
-  });
-
   describe('removeFile', () => {
     it('should do nothing when file not found', async () => {
       ctx.fileModel.delete.mockResolvedValue(null);
