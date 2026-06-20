@@ -1,3 +1,5 @@
+import type { Filter } from 'prest-js-sdk';
+
 import { INBOX_SESSION_ID } from '@/const/session';
 import { getPrestClient, getWorkspaceParams } from '@/libs/prest/client';
 import { lambdaClient } from '@/libs/trpc/client';
@@ -112,13 +114,13 @@ export class TopicService {
   }): Promise<number> => {
     const client = await getPrestClient();
 
-    const where: Record<string, unknown> = {};
+    const where: Filter = {};
     if (params?.agentId) where.agent_id = params.agentId;
     if (params?.containerId) where.group_id = params.containerId;
     if (params?.startDate) where.created_at = { gte: params.startDate };
     if (params?.endDate) where.updated_at = { lte: params.endDate };
 
-    const rows = await client.select<{ count: number }[]>('lobehub', 'public', 'topics', {
+    const rows = await client.select<{ count: number }>('lobehub', 'public', 'topics', {
       count: true,
       ...(Object.keys(where).length ? { where } : {}),
     });
@@ -176,7 +178,7 @@ export class TopicService {
     if (data.title !== undefined) patch.title = data.title;
     if (data.favorite !== undefined) patch.favorite = data.favorite;
     if (data.description !== undefined) patch.description = data.description;
-    if (data.content !== undefined) patch.content = data.content;
+    if ((data as any).content !== undefined) patch.content = (data as any).content;
     if (data.status !== undefined) patch.status = data.status;
     if (data.trigger !== undefined) patch.trigger = data.trigger;
     if (data.metadata !== undefined) patch.metadata = data.metadata;
@@ -248,7 +250,7 @@ export class TopicService {
   };
 
   private toDbSessionId = (sessionId?: string | null) =>
-    sessionId === INBOX_SESSION_ID ? null : sessionId;
+    sessionId === INBOX_SESSION_ID || !sessionId ? null : sessionId;
 }
 
 export const topicService = new TopicService();

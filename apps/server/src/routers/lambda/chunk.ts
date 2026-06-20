@@ -30,7 +30,12 @@ const chunkProcedure = wsCompatProcedure.use(serverDatabase).use(async (opts) =>
       chunkModel: new ChunkModel(ctx.serverDB, ctx.userId, wsId),
       chunkService: new ChunkService(ctx.serverDB, ctx.userId, wsId),
       documentModel: new DocumentModel(ctx.serverDB, ctx.userId, wsId),
-      documentService: new DocumentService(ctx.serverDB, ctx.userId, wsId, ctx.kratosSessionToken),
+      documentService: new DocumentService(
+        ctx.serverDB,
+        ctx.userId,
+        wsId,
+        ctx.kratosSessionToken ?? undefined,
+      ),
       embeddingModel: new EmbeddingModel(ctx.serverDB, ctx.userId, wsId),
       fileModel: new FileModel(ctx.serverDB, ctx.userId, wsId),
       knowledgeBaseSearchService: new KnowledgeBaseSearchService(ctx.serverDB, ctx.userId, wsId),

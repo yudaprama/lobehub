@@ -20,25 +20,25 @@ interface KnowledgeBaseFileRow {
 class KnowledgeBaseService {
   createKnowledgeBase = async (params: CreateKnowledgeBaseParams) => {
     const db = await getLobehubClient();
-    const [row] = await db.insert<KnowledgeBaseRow>('knowledge_bases', {
-      id: params.id ?? crypto.randomUUID(),
+    const [row] = await db.insert('knowledge_bases', {
+      id: (params as any).id ?? crypto.randomUUID(),
       name: params.name,
       description: params.description ?? null,
-      avatar: params.avatar ?? null,
+      avatar: (params as any).avatar ?? null,
     });
     return row;
   };
 
   getKnowledgeBaseList = async () => {
     const db = await getLobehubClient();
-    return db.select<KnowledgeBaseRow>('knowledge_bases', {
+    return db.select('knowledge_bases', {
       order: ['updated_at:desc'],
     });
   };
 
   getKnowledgeBaseById = async (id: string) => {
     const db = await getLobehubClient();
-    const [row] = await db.select<KnowledgeBaseRow>('knowledge_bases', {
+    const [row] = await db.select('knowledge_bases', {
       where: { id },
       size: 1,
     });
@@ -87,8 +87,8 @@ class KnowledgeBaseService {
    */
   addFilesToKnowledgeBase = async (knowledgeBaseId: string, ids: string[]) => {
     if (ids.length === 0) return;
-    const db = await getLobehubClient();
-    await db.client.insertBatch(
+    const client = await getPrestClient();
+    await client.insertBatch(
       'lobehub',
       'public',
       'knowledge_base_files',

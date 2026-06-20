@@ -34,13 +34,13 @@ export class PluginService {
   installPlugin = async (plugin: InstallPluginParams): Promise<void> => {
     const db = await getLobehubClient();
     const existing = await db.select('user_installed_plugins', {
-      where: { identifier: plugin.identifier },
+      where: { identifier: (plugin as any).identifier },
       size: 1,
     });
     if (existing.length > 0) {
       await db.update(
         'user_installed_plugins',
-        { identifier: plugin.identifier },
+        { identifier: (plugin as any).identifier },
         {
           custom_params: plugin.customParams,
           manifest: plugin.manifest,
@@ -50,7 +50,7 @@ export class PluginService {
     } else {
       await db.insert('user_installed_plugins', {
         custom_params: plugin.customParams,
-        identifier: plugin.identifier,
+        identifier: (plugin as any).identifier,
         manifest: plugin.manifest,
         settings: plugin.settings,
         type: plugin.type,
@@ -82,7 +82,7 @@ export class PluginService {
     const db = await getLobehubClient();
     await db.insert('user_installed_plugins', {
       custom_params: customPlugin.customParams,
-      identifier: customPlugin.id,
+      identifier: (customPlugin as any).id,
       manifest: customPlugin.manifest,
       settings: customPlugin.settings,
       type: 'customPlugin',
@@ -112,7 +112,11 @@ export class PluginService {
     await db.delete('user_installed_plugins', {});
   };
 
-  updatePluginSettings = async (id: string, settings: any, _signal?: AbortSignal): Promise<void> => {
+  updatePluginSettings = async (
+    id: string,
+    settings: any,
+    _signal?: AbortSignal,
+  ): Promise<void> => {
     const db = await getLobehubClient();
     await db.update('user_installed_plugins', { identifier: id }, { settings });
   };

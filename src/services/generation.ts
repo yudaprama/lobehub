@@ -23,12 +23,13 @@ class GenerationService {
     const [gen] = await db.select('generations', { where: { id: generationId }, size: 1 });
     if (!gen) return null;
 
-    const [task] = await db.select<AsyncTaskRow>('async_tasks', {
+    const [task] = await db.select('async_tasks', {
       where: { id: asyncTaskId },
       size: 1,
     });
 
-    return { ...gen, async_task: task ?? null };
+    const taskRow = (task as AsyncTaskRow) ?? null;
+    return { ...gen, async_task: taskRow, status: taskRow?.status ?? null, generation: gen };
   }
 
   /**

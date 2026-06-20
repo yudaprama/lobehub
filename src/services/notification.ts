@@ -46,7 +46,7 @@ class NotificationService {
 
     // Tier 1: count unread, non-archived notifications for this user.
     // user_id is auto-injected by pREST's [[auth.user_id_filters]].
-    const rows = await client.select<{ count: number }[]>('lobehub', 'public', 'notifications', {
+    const rows = await client.select<{ count: number }>('lobehub', 'public', 'notifications', {
       count: true,
       where: { is_read: false, is_archived: false },
     });

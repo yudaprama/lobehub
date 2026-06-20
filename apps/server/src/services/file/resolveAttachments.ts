@@ -25,9 +25,9 @@ export interface ResolvedAttachments {
 interface ResolveArgs {
   db: LobeChatDatabase;
   fileIds: string[];
+  kratosSessionToken?: string;
   userId: string;
   workspaceId?: string;
-  kratosSessionToken?: string;
 }
 
 const dedupe = (ids: string[]) => Array.from(new Set(ids));
@@ -45,6 +45,7 @@ export const resolveAttachmentsByFileIds = async ({
   fileIds,
   userId,
   workspaceId,
+  kratosSessionToken,
 }: ResolveArgs): Promise<ResolvedAttachments> => {
   const result: ResolvedAttachments = {
     audioList: [],
@@ -160,6 +161,7 @@ export const resolveAttachmentMetadata = async ({
   signUrls = true,
   userId,
   workspaceId,
+  kratosSessionToken,
 }: ResolveArgs & { signUrls?: boolean }): Promise<ChatFileItem[]> => {
   if (fileIds.length === 0) return [];
 
@@ -171,7 +173,9 @@ export const resolveAttachmentMetadata = async ({
     return [];
   }
 
-  const fileService = signUrls ? new FileService(db, userId, workspaceId, kratosSessionToken) : null;
+  const fileService = signUrls
+    ? new FileService(db, userId, workspaceId, kratosSessionToken)
+    : null;
   const recordById = new Map(fileRecords.map((f) => [f.id, f]));
   const items = await Promise.all(
     dedupedFileIds.map(async (id) => {

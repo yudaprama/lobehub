@@ -39,7 +39,7 @@ class GenerationBatchService {
   async deleteGenerationBatch(batchId: string): Promise<GenerationBatchItem | undefined> {
     const db = await getLobehubClient();
     const [row] = await db.delete('generation_batches', { id: batchId });
-    return row ?? undefined;
+    return (row as any) ?? undefined;
   }
 }
 

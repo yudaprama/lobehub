@@ -27,8 +27,9 @@ import {
 } from '@/database/models/ragEval';
 import { router } from '@/libs/trpc/lambda';
 import { serverDatabase } from '@/libs/trpc/lambda/middleware';
-import { enqueueRagEval, isRiverHealthy } from '@/server/rivers/riverProducer';
 import { FileService } from '@/server/services/file';
+
+import { enqueueRagEval, isRiverHealthy } from '../../server/rivers/riverProducer';
 
 const ragEvalProcedure = wsCompatProcedure.use(serverDatabase).use(async (opts) => {
   const { ctx } = opts;
@@ -41,7 +42,12 @@ const ragEvalProcedure = wsCompatProcedure.use(serverDatabase).use(async (opts) 
       datasetRecordModel: new EvalDatasetRecordModel(ctx.serverDB, ctx.userId, wsId),
       evaluationModel: new EvalEvaluationModel(ctx.serverDB, ctx.userId, wsId),
       evaluationRecordModel: new EvaluationRecordModel(ctx.serverDB, ctx.userId, wsId),
-      fileService: new FileService(ctx.serverDB, ctx.userId, wsId, ctx.kratosSessionToken),
+      fileService: new FileService(
+        ctx.serverDB,
+        ctx.userId,
+        wsId,
+        ctx.kratosSessionToken ?? undefined,
+      ),
     },
   });
 });

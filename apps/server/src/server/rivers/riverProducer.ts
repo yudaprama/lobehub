@@ -35,10 +35,10 @@ export interface EmbedFileChunksArgs {
 
 export interface ParseFileToChunksArgs {
   fileId: string;
+  skipExist?: boolean;
   taskId: string;
   userId: string;
   workspaceId?: string;
-  skipExist?: boolean;
 }
 
 export interface RagEvalArgs {
@@ -61,7 +61,7 @@ export class RiverProducer {
 
   constructor(db: LobeChatDatabase) {
     this.exec = async (q) => {
-      const result = await db.execute(q);
+      const result = await db.execute(q.sql as any);
       return { rows: result as unknown as any[] };
     };
   }
@@ -87,7 +87,8 @@ export class RiverProducer {
     const tags = opts?.tags ?? [];
     const tagsLit = tags.length > 0 ? `{${tags.join(',')}}` : '{}';
 
-    const result = await this.exec(sql`
+    const result = await this.exec(
+      sql`
       INSERT INTO river_job
         (kind, args, queue, max_attempts, tags, metadata, state, priority, attempt, created_at, scheduled_at)
       VALUES
@@ -95,9 +96,10 @@ export class RiverProducer {
          ${queue}, ${maxAttempts}, ${tagsLit}::text[],
          '{}'::jsonb, 1, 2, 0, now(), now())
       RETURNING id
-    ` as any);
+    ` as any,
+    );
 
-    const rows = Array.isArray(result.rows) ? result.rows : (result.rows as any)?.rows ?? [];
+    const rows = Array.isArray(result.rows) ? result.rows : ((result.rows as any)?.rows ?? []);
     const row = rows[0];
     if (!row) throw new Error(`riverProducer: INSERT ${kind} returned no row`);
     return { jobId: row.id };

@@ -23,11 +23,11 @@ export class KnowledgeBaseCrudActionImpl {
   }
 
   createNewKnowledgeBase = async (params: CreateKnowledgeBaseParams): Promise<string> => {
-    const id = await knowledgeBaseService.createKnowledgeBase(params);
+    const row = await knowledgeBaseService.createKnowledgeBase(params);
 
     await this.#get().refreshKnowledgeBaseList();
 
-    return id;
+    return (row as any)?.id ?? '';
   };
 
   internal_toggleKnowledgeBaseLoading = (id: string, loading: boolean): void => {
@@ -63,7 +63,7 @@ export class KnowledgeBaseCrudActionImpl {
   useFetchKnowledgeBaseItem = (id: string): SWRResponse<KnowledgeBaseItem | undefined> => {
     return useClientDataSWR<KnowledgeBaseItem | undefined>(
       knowledgeBaseKeys.item(id),
-      () => knowledgeBaseService.getKnowledgeBaseById(id),
+      () => knowledgeBaseService.getKnowledgeBaseById(id) as any,
       {
         onSuccess: (item) => {
           if (!item) return;
@@ -72,7 +72,7 @@ export class KnowledgeBaseCrudActionImpl {
             activeKnowledgeBaseId: id,
             activeKnowledgeBaseItems: {
               ...this.#get().activeKnowledgeBaseItems,
-              [id]: item,
+              [id]: item as KnowledgeBaseItem,
             },
           });
         },
@@ -83,7 +83,7 @@ export class KnowledgeBaseCrudActionImpl {
   useFetchKnowledgeBaseList = (): SWRResponse<KnowledgeBaseItem[]> => {
     return useClientDataSWR<KnowledgeBaseItem[]>(
       knowledgeBaseKeys.list(),
-      () => knowledgeBaseService.getKnowledgeBaseList(),
+      () => knowledgeBaseService.getKnowledgeBaseList() as any,
       {
         fallbackData: [],
         onSuccess: () => {

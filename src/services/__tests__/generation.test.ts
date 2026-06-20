@@ -3,8 +3,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { generationService } from '../generation';
 
 const prestMock = vi.hoisted(() => ({
-  select: vi.fn(() => Promise.resolve([])),
-  delete: vi.fn(() => Promise.resolve([])),
+  select: vi.fn<() => Promise<unknown[]>>(() => Promise.resolve([])),
+  delete: vi.fn<() => Promise<unknown[]>>(() => Promise.resolve([])),
 }));
 
 vi.mock('@/libs/prest/client', () => ({

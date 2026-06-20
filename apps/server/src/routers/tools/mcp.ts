@@ -73,7 +73,12 @@ const mcpProcedure = wsCompatProcedure
   .use(async ({ ctx, next }) => {
     return next({
       ctx: {
-        fileService: new FileService(ctx.serverDB, ctx.userId, ctx.workspaceId ?? undefined, ctx.kratosSessionToken),
+        fileService: new FileService(
+          ctx.serverDB,
+          ctx.userId,
+          ctx.workspaceId ?? undefined,
+          ctx.kratosSessionToken ?? undefined,
+        ),
       },
     });
   });

@@ -65,7 +65,9 @@ describe('KnowledgeBaseCrudAction', () => {
         description: 'Test Description',
       };
 
-      vi.spyOn(knowledgeBaseService, 'createKnowledgeBase').mockResolvedValue('new-kb-id');
+      vi.spyOn(knowledgeBaseService, 'createKnowledgeBase').mockResolvedValue({
+        id: 'new-kb-id',
+      } as any);
 
       const { result } = renderHook(() => useKnowledgeBaseStore());
       const refreshSpy = vi.spyOn(result.current, 'refreshKnowledgeBaseList').mockResolvedValue();
@@ -258,7 +260,7 @@ describe('KnowledgeBaseCrudAction', () => {
         updatedAt: new Date(),
       };
 
-      vi.spyOn(knowledgeBaseService, 'getKnowledgeBaseById').mockResolvedValue(mockItem);
+      vi.spyOn(knowledgeBaseService, 'getKnowledgeBaseById').mockResolvedValue(mockItem as any);
 
       const { result } = renderHook(
         () => useKnowledgeBaseStore().useFetchKnowledgeBaseItem('kb-1'),
@@ -288,7 +290,7 @@ describe('KnowledgeBaseCrudAction', () => {
         updatedAt: new Date(),
       };
 
-      vi.spyOn(knowledgeBaseService, 'getKnowledgeBaseById').mockResolvedValue(mockItem);
+      vi.spyOn(knowledgeBaseService, 'getKnowledgeBaseById').mockResolvedValue(mockItem as any);
 
       const { result } = renderHook(
         () => useKnowledgeBaseStore().useFetchKnowledgeBaseItem('kb-2'),
@@ -307,7 +309,7 @@ describe('KnowledgeBaseCrudAction', () => {
     });
 
     it('should not update store when item is undefined', async () => {
-      vi.spyOn(knowledgeBaseService, 'getKnowledgeBaseById').mockResolvedValue(undefined);
+      vi.spyOn(knowledgeBaseService, 'getKnowledgeBaseById').mockResolvedValue(undefined as any);
 
       act(() => {
         useKnowledgeBaseStore.setState({
@@ -367,7 +369,7 @@ describe('KnowledgeBaseCrudAction', () => {
         });
       });
 
-      vi.spyOn(knowledgeBaseService, 'getKnowledgeBaseById').mockResolvedValue(newItem);
+      vi.spyOn(knowledgeBaseService, 'getKnowledgeBaseById').mockResolvedValue(newItem as any);
 
       const { result } = renderHook(
         () => useKnowledgeBaseStore().useFetchKnowledgeBaseItem('kb-new'),
@@ -415,7 +417,7 @@ describe('KnowledgeBaseCrudAction', () => {
         },
       ];
 
-      vi.spyOn(knowledgeBaseService, 'getKnowledgeBaseList').mockResolvedValue(mockList);
+      vi.spyOn(knowledgeBaseService, 'getKnowledgeBaseList').mockResolvedValue(mockList as any);
 
       const { result } = renderHook(() => useKnowledgeBaseStore().useFetchKnowledgeBaseList(), {
         wrapper: withSWR,
@@ -464,7 +466,7 @@ describe('KnowledgeBaseCrudAction', () => {
         });
       });
 
-      vi.spyOn(knowledgeBaseService, 'getKnowledgeBaseList').mockResolvedValue(mockList);
+      vi.spyOn(knowledgeBaseService, 'getKnowledgeBaseList').mockResolvedValue(mockList as any);
 
       const { result } = renderHook(() => useKnowledgeBaseStore().useFetchKnowledgeBaseList(), {
         wrapper: withSWR,
@@ -491,7 +493,7 @@ describe('KnowledgeBaseCrudAction', () => {
         });
       });
 
-      vi.spyOn(knowledgeBaseService, 'getKnowledgeBaseList').mockResolvedValue(mockList);
+      vi.spyOn(knowledgeBaseService, 'getKnowledgeBaseList').mockResolvedValue(mockList as any);
 
       const { result } = renderHook(() => useKnowledgeBaseStore().useFetchKnowledgeBaseList(), {
         wrapper: withSWR,

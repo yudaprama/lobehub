@@ -61,7 +61,7 @@ export class NotebookActionImpl {
       topicId: params.topicId,
     });
 
-    return document;
+    return document as unknown as DocumentItem;
   };
 
   deleteDocument = async (id: string, topicId: string): Promise<void> => {
@@ -89,18 +89,18 @@ export class NotebookActionImpl {
 
     await invalidateDocumentMutation({ cause: 'notebook', documentId: params.id, topicId });
 
-    return document;
+    return document as unknown as DocumentItem;
   };
 
   useFetchDocuments = (topicId: string | undefined): SWRResponse<NotebookDocument[]> => {
     return useClientDataSWR<NotebookDocument[]>(
       topicId ? notebookSWRKeys.documents(topicId) : null,
-      async () => {
+      async (): Promise<NotebookDocument[]> => {
         if (!topicId) return [];
 
         const result = await notebookService.listDocuments({ topicId });
 
-        return result.data;
+        return result as unknown as NotebookDocument[];
       },
       {
         onSuccess: (documents) => {

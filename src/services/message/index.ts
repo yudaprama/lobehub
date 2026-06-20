@@ -14,6 +14,7 @@ import {
   type UpdateMessageResult,
 } from '@lobechat/types';
 import { type HeatmapsProps } from '@lobehub/charts';
+import type { Filter } from 'prest-js-sdk';
 
 import { getPrestClient, getWorkspaceParams } from '@/libs/prest/client';
 import { lambdaClient } from '@/libs/trpc/client';
@@ -67,12 +68,12 @@ export class MessageService {
   }): Promise<number> => {
     const client = await getPrestClient();
 
-    const where: Record<string, unknown> = {};
+    const where: Filter = {};
     if (params?.startDate) where.created_at = { gte: params.startDate };
     if (params?.endDate)
       where.created_at = { ...(where.created_at as object), lte: params.endDate };
 
-    const rows = await client.select<{ count: number }[]>('lobehub', 'public', 'messages', {
+    const rows = await client.select<{ count: number }>('lobehub', 'public', 'messages', {
       count: true,
       ...(Object.keys(where).length ? { where } : {}),
     });
@@ -100,7 +101,11 @@ export class MessageService {
     return lambdaClient.message.getTokenHeatmaps.query();
   };
 
-  updateMessageError = async (id: string, value: ChatMessageError, ctx?: MessageQueryContext) => {
+  updateMessageError = async (
+    id: string,
+    value: ChatMessageError,
+    ctx?: MessageQueryContext,
+  ): Promise<{ messages?: UIChatMessage[]; success: boolean }> => {
     const error = value.type
       ? value
       : { body: value, message: value.message, type: 'ApplicationRuntimeError' };

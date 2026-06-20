@@ -44,7 +44,7 @@ export class ThreadService {
       type: params.type,
       source_message_id: params.sourceMessageId ?? null,
       parent_thread_id: params.parentThreadId ?? null,
-      client_id: params.clientId ?? null,
+      client_id: (params as any).clientId ?? null,
       agent_id: params.agentId ?? null,
       group_id: params.groupId ?? null,
       content: null,
@@ -58,14 +58,15 @@ export class ThreadService {
 
   updateThread = async (id: string, data: Partial<ThreadItem>) => {
     const client = await getPrestClient();
+    const d = data as Record<string, any>;
 
     const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
     if (data.title !== undefined) patch.title = data.title;
     if (data.status !== undefined) patch.status = data.status;
     if (data.metadata !== undefined) patch.metadata = data.metadata;
-    if (data.content !== undefined) patch.content = data.content;
-    if (data.editorData !== undefined) patch.editor_data = data.editorData;
-    if (data.lastActiveAt) patch.last_active_at = data.lastActiveAt;
+    if (d.content !== undefined) patch.content = d.content;
+    if (d.editorData !== undefined) patch.editor_data = d.editorData;
+    if (d.lastActiveAt) patch.last_active_at = d.lastActiveAt;
 
     await client.update('lobehub', 'public', 'threads', { id }, patch);
   };

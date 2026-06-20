@@ -150,14 +150,14 @@ const StatsSetting = memo<StatsSettingProps>(
           }}
         >
           <UsageCards
-            data={data}
+            data={data as any}
             groupBy={groupBy}
             isLoading={isLoading}
             resolveUser={resolveUser}
           />
           <Divider />
           <UsageTrends
-            data={data}
+            data={data as any}
             groupBy={groupBy}
             isLoading={isLoading}
             resolveUser={resolveUser}

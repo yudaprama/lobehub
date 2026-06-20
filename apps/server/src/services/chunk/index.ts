@@ -10,11 +10,12 @@ import {
   AsyncTaskStatus,
   AsyncTaskType,
 } from '@/types/asyncTask';
+
 import {
   enqueueEmbedFileChunks,
   enqueueParseFileToChunks,
   isRiverHealthy,
-} from '@/server/rivers/riverProducer';
+} from '../../server/rivers/riverProducer';
 
 /**
  * Two enqueue paths:
@@ -85,7 +86,7 @@ export class ChunkService {
     const { createAsyncCaller } = await import('@/server/routers/async');
     const asyncCaller = await createAsyncCaller({ userId: this.userId });
     try {
-      await asyncCaller.file.embeddingChunks({
+      await (asyncCaller as any).file.embeddingChunks({
         fileId,
         taskId: asyncTaskId,
         workspaceId: this.workspaceId,
@@ -125,7 +126,7 @@ export class ChunkService {
         userId: this.userId,
         workspaceId: this.workspaceId,
         skipExist,
-      }).catch(async (e) => {
+      }).catch(async (e: unknown) => {
         console.error('[ParseFileToChunks] river enqueue failed:', e);
         await this.asyncTaskModel.update(asyncTaskId, {
           error: new AsyncTaskError(
@@ -141,9 +142,9 @@ export class ChunkService {
     // Legacy fallback.
     const { createAsyncCaller } = await import('@/server/routers/async');
     const asyncCaller = await createAsyncCaller({ userId: this.userId });
-    asyncCaller.file
+    (asyncCaller as any).file
       .parseFileToChunks({ fileId, taskId: asyncTaskId, workspaceId: this.workspaceId })
-      .catch(async (e) => {
+      .catch(async (e: unknown) => {
         console.error('[ParseFileToChunks] error:', e);
         await this.asyncTaskModel.update(asyncTaskId, {
           error: new AsyncTaskError(

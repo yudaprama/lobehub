@@ -121,7 +121,7 @@ const UsageTable = memo<UsageChartProps>(({ dateStrings }) => {
   return (
     <InlineTable
       columns={columns}
-      dataSource={data}
+      dataSource={data as any[]}
       loading={isLoading}
       rowKey={(record) => record.id || `${record.model}-${record.createdAt}-${record.provider}`}
       size="small"

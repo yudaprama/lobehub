@@ -69,7 +69,12 @@ const marketToolProcedure = wsCompatProcedure
           accessToken: ctx.marketAccessToken,
           userInfo: ctx.marketUserInfo,
         }),
-        fileService: new FileService(ctx.serverDB, ctx.userId, ctx.workspaceId ?? undefined, ctx.kratosSessionToken),
+        fileService: new FileService(
+          ctx.serverDB,
+          ctx.userId,
+          ctx.workspaceId ?? undefined,
+          ctx.kratosSessionToken ?? undefined,
+        ),
         marketService: new MarketService({
           accessToken: ctx.marketAccessToken,
           userInfo: ctx.marketUserInfo,

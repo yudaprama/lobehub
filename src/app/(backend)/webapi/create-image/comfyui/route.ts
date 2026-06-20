@@ -24,7 +24,7 @@ const handler = async (req: Request, { jwtPayload }: { jwtPayload?: any }) => {
     });
 
     // Call ComfyUI service through tRPC
-    const result = await caller.comfyui.createImage({
+    const result = await (caller as any).comfyui.createImage({
       model,
       options,
       params,

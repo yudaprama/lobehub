@@ -108,7 +108,12 @@ const aiChatProcedure = wsCompatProcedure.use(serverDatabase).use(async (opts) =
       agentModel: new AgentModel(ctx.serverDB, ctx.userId, wsId),
       aiChatService: new AiChatService(ctx.serverDB, ctx.userId, wsId),
       aiGenerationService: new AiGenerationService(ctx.serverDB, ctx.userId, wsId),
-      fileService: new FileService(ctx.serverDB, ctx.userId, wsId, ctx.kratosSessionToken),
+      fileService: new FileService(
+        ctx.serverDB,
+        ctx.userId,
+        wsId,
+        ctx.kratosSessionToken ?? undefined,
+      ),
       messageModel: new MessageModel(ctx.serverDB, ctx.userId, wsId),
       threadModel: new ThreadModel(ctx.serverDB, ctx.userId, wsId),
       topicModel: new TopicModel(ctx.serverDB, ctx.userId, wsId),

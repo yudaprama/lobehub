@@ -4,7 +4,6 @@ import { type SWRResponse } from 'swr';
 
 import { mutate, useClientDataSWR } from '@/libs/swr';
 import { imageKeys } from '@/libs/swr/keys';
-import { type GetGenerationStatusResult } from '@/server/routers/lambda/generation';
 import { generationService } from '@/services/generation';
 import { generationBatchService } from '@/services/generationBatch';
 import { type StoreSetter } from '@/store/types';
@@ -16,6 +15,8 @@ import { type ImageStore } from '../../store';
 import { generationTopicSelectors } from '../generationTopic/selectors';
 import { type GenerationBatchDispatch } from './reducer';
 import { generationBatchReducer } from './reducer';
+
+type GetGenerationStatusResult = Awaited<ReturnType<typeof generationService.getGenerationStatus>>;
 
 const n = setNamespace('generationBatch');
 
@@ -269,7 +270,7 @@ export class GenerationBatchActionImpl {
                   type: 'updateGenerationInBatch',
                   batchId: targetBatch.id,
                   generationId,
-                  value: data.generation,
+                  value: data.generation as any,
                 },
                 n(
                   `useCheckGenerationStatus/${data.status === AsyncTaskStatus.Success ? 'success' : 'error'}`,
@@ -277,7 +278,10 @@ export class GenerationBatchActionImpl {
               );
 
               // If generation succeeds and has a thumbnail, check if the current topic has an imageUrl
-              if (data.status === AsyncTaskStatus.Success && data.generation.asset?.thumbnailUrl) {
+              if (
+                data.status === AsyncTaskStatus.Success &&
+                (data.generation.asset as any)?.thumbnailUrl
+              ) {
                 const currentTopic = generationTopicSelectors.getGenerationTopicById(topicId)(
                   this.#get(),
                 );
@@ -286,7 +290,7 @@ export class GenerationBatchActionImpl {
                 if (currentTopic && !currentTopic.coverUrl) {
                   await this.#get().updateGenerationTopicCover(
                     topicId,
-                    data.generation.asset.thumbnailUrl,
+                    (data.generation.asset as any).thumbnailUrl,
                   );
                 }
               }

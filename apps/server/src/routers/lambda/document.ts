@@ -38,7 +38,12 @@ const documentProcedure = wsCompatProcedure.use(serverDatabase).use(async (opts)
     ctx: {
       chunkModel: new ChunkModel(ctx.serverDB, ctx.userId, wsId),
       documentModel: new DocumentModel(ctx.serverDB, ctx.userId, wsId),
-      documentService: new DocumentService(ctx.serverDB, ctx.userId, wsId, ctx.kratosSessionToken),
+      documentService: new DocumentService(
+        ctx.serverDB,
+        ctx.userId,
+        wsId,
+        ctx.kratosSessionToken ?? undefined,
+      ),
       fileModel: new FileModel(ctx.serverDB, ctx.userId, wsId),
       messageModel: new MessageModel(ctx.serverDB, ctx.userId, wsId),
     },

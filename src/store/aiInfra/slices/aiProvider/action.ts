@@ -434,7 +434,7 @@ export class AiProviderActionImpl {
   useFetchAiProviderList = (opts?: { enabled?: boolean }): SWRResponse<AiProviderListItem[]> => {
     return useClientDataSWR<AiProviderListItem[]>(
       opts?.enabled === false ? null : AiProviderSwrKey.fetchAiProviderList,
-      () => aiProviderService.getAiProviderList(),
+      () => aiProviderService.getAiProviderList() as Promise<AiProviderListItem[]>,
       {
         fallbackData: [],
         onSuccess: (data) => {

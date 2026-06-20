@@ -63,7 +63,7 @@ export class FileService {
       id: row.id,
       name: row.name,
       size: row.size,
-      source: row.source ?? undefined,
+      source: (row.source as any) ?? undefined,
       type: row.file_type,
       updatedAt: new Date(row.updated_at),
       url: row.url,

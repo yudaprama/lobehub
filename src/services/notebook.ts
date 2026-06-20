@@ -37,6 +37,7 @@ class NotebookService {
     const [doc] = await db.insert('documents', {
       content: params.content,
       description: params.description,
+      file_type: 'markdown',
       metadata: params.metadata,
       source: params.source,
       source_type: params.sourceType,
@@ -57,10 +58,14 @@ class NotebookService {
     if (params.append) {
       const [existing] = await db.select('documents', { where: { id: params.id }, size: 1 });
       const newContent = (existing?.content || '') + (params.content || '');
-      const [row] = await db.update('documents', { id: params.id }, {
-        ...params,
-        content: newContent,
-      });
+      const [row] = await db.update(
+        'documents',
+        { id: params.id },
+        {
+          ...params,
+          content: newContent,
+        },
+      );
       return row;
     }
     const [row] = await db.update('documents', { id: params.id }, params);

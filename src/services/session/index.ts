@@ -46,9 +46,10 @@ export class SessionService {
     // Tier 2 stored SQL template handles userId scoping + session/group join
     // + last-message preview. The shape matches ChatSessionList by
     // construction — the template was authored against this consumer.
-    return client.query<ChatSessionList>('lobehub', 'sessionsListGrouped', {
+    const [result] = await client.query<ChatSessionList>('lobehub', 'sessionsListGrouped', {
       ...getWorkspaceParams(),
     });
+    return result;
   };
 
   countSessions = async (params?: {
@@ -117,7 +118,7 @@ export class SessionService {
 
   createSessionGroup = async (name: string, sort?: number): Promise<string> => {
     const db = await getLobehubClient();
-    const [row] = await db.insert('session_groups', { name, sort });
+    const [row] = await db.insert('session_groups', { id: crypto.randomUUID(), name, sort });
     return row?.id;
   };
 
@@ -138,9 +139,7 @@ export class SessionService {
 
   updateSessionGroupOrder = async (sortMap: { id: string; sort: number }[]) => {
     const db = await getLobehubClient();
-    await Promise.all(
-      sortMap.map(({ id, sort }) => db.update('session_groups', { id }, { sort })),
-    );
+    await Promise.all(sortMap.map(({ id, sort }) => db.update('session_groups', { id }, { sort })));
   };
 }
 

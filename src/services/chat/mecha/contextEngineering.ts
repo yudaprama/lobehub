@@ -342,22 +342,22 @@ export const contextEngineering = async ({
         type: AGENT_PLAN_FILE_TYPE,
       });
 
-      if (planResult.data.length > 0) {
-        const planDoc = planResult.data[0]; // Most recent plan
+      if (planResult.length > 0) {
+        const planDoc = planResult[0]; // Most recent plan
 
         // Build plan object for injection
         const plan = {
-          completed: false, // TODO: Add completed field to document if needed
+          completed: false,
           context: planDoc.content ?? undefined,
-          createdAt: planDoc.createdAt.toISOString(),
+          createdAt: planDoc.created_at,
           description: planDoc.description || '',
           goal: planDoc.title || '',
           id: planDoc.id,
-          updatedAt: planDoc.updatedAt.toISOString(),
+          updatedAt: planDoc.updated_at,
         };
 
         // Get todos from plan's metadata
-        const todos = planDoc.metadata?.todos;
+        const todos = (planDoc.metadata as any)?.todos;
 
         planTodoConfig = {
           enabled: true,

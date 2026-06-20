@@ -144,9 +144,19 @@ const fileProcedure = wsCompatProcedure.use(serverDatabase).use(async (opts) => 
       asyncTaskModel: new AsyncTaskModel(ctx.serverDB, ctx.userId, wsId),
       chunkModel: new ChunkModel(ctx.serverDB, ctx.userId, wsId),
       documentModel: new DocumentModel(ctx.serverDB, ctx.userId, wsId),
-      documentService: new DocumentService(ctx.serverDB, ctx.userId, wsId, ctx.kratosSessionToken),
+      documentService: new DocumentService(
+        ctx.serverDB,
+        ctx.userId,
+        wsId,
+        ctx.kratosSessionToken ?? undefined,
+      ),
       fileModel: new FileModel(ctx.serverDB, ctx.userId, wsId),
-      fileService: new FileService(ctx.serverDB, ctx.userId, wsId, ctx.kratosSessionToken),
+      fileService: new FileService(
+        ctx.serverDB,
+        ctx.userId,
+        wsId,
+        ctx.kratosSessionToken ?? undefined,
+      ),
       knowledgeRepo: new KnowledgeRepo(ctx.serverDB, ctx.userId, wsId),
     },
   });

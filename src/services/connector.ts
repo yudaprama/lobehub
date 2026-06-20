@@ -42,11 +42,11 @@ class ConnectorService {
     return lambdaClient.connector.update.mutate({ id, patch: patch as any });
   };
 
-  syncTools = (id: string): Promise<void> => {
+  syncTools = (id: string) => {
     return lambdaClient.connector.syncTools.mutate({ id });
   };
 
-  resetPermissions = (id: string): Promise<void> => {
+  resetPermissions = (id: string) => {
     return lambdaClient.connector.resetPermissions.mutate({ id });
   };
 

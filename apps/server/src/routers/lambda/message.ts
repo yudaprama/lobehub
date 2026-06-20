@@ -33,7 +33,12 @@ const messageProcedure = wsCompatProcedure.use(serverDatabase).use(async (opts) 
   return opts.next({
     ctx: {
       compressionRepo: new CompressionRepository(ctx.serverDB, ctx.userId, wsId),
-      fileService: new FileService(ctx.serverDB, ctx.userId, wsId, ctx.kratosSessionToken),
+      fileService: new FileService(
+        ctx.serverDB,
+        ctx.userId,
+        wsId,
+        ctx.kratosSessionToken ?? undefined,
+      ),
       messageModel: new MessageModel(ctx.serverDB, ctx.userId, wsId),
       messageService: new MessageService(ctx.serverDB, ctx.userId, wsId),
     },
@@ -208,7 +213,7 @@ export const messageRouter = router({
           ctx.serverDB,
           share.ownerId,
           undefined,
-          ctx.kratosSessionToken,
+          ctx.kratosSessionToken ?? undefined,
         );
 
         return messageModel.query(
@@ -227,7 +232,12 @@ export const messageRouter = router({
 
       const wsId = ctx.workspaceId ?? undefined;
       const messageModel = new MessageModel(ctx.serverDB, ctx.userId, wsId);
-      const fileService = new FileService(ctx.serverDB, ctx.userId, wsId, ctx.kratosSessionToken);
+      const fileService = new FileService(
+        ctx.serverDB,
+        ctx.userId,
+        wsId,
+        ctx.kratosSessionToken ?? undefined,
+      );
 
       return messageModel.query(queryParams, {
         postProcessUrl: (path, file) => fileService.getFileAccessUrl({ id: file.id, url: path }),

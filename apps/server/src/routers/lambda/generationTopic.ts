@@ -15,7 +15,12 @@ const generationTopicProcedure = wsCompatProcedure.use(serverDatabase).use(async
 
   return opts.next({
     ctx: {
-      fileService: new FileService(ctx.serverDB, ctx.userId, wsId, ctx.kratosSessionToken),
+      fileService: new FileService(
+        ctx.serverDB,
+        ctx.userId,
+        wsId,
+        ctx.kratosSessionToken ?? undefined,
+      ),
       generationService: new GenerationService(ctx.serverDB, ctx.userId, wsId),
       generationTopicModel: new GenerationTopicModel(ctx.serverDB, ctx.userId, wsId),
     },

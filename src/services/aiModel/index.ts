@@ -18,7 +18,7 @@ export interface GetAiProviderModelListParams {
 export class AiModelService {
   createAiModel = async (params: CreateAiModelParams) => {
     const db = await getLobehubClient();
-    return db.insert('ai_models', params);
+    return db.insert('ai_models', params as any);
   };
 
   getAiProviderModelList = async (
@@ -30,7 +30,7 @@ export class AiModelService {
       where: { provider_id: id, ...(params?.enabled != null ? { enabled: params.enabled } : {}) },
       size: params?.limit ?? 200,
     });
-    return models.filter(isAiModelVisible);
+    return (models as any[]).filter(isAiModelVisible);
   };
 
   getAiModelById = async (id: string) => {
@@ -74,7 +74,9 @@ export class AiModelService {
   updateAiModelOrder = async (providerId: string, items: AiModelSortMap[]) => {
     const db = await getLobehubClient();
     await Promise.all(
-      items.map((item) => db.update('ai_models', { id: item.id, provider_id: providerId }, { sort_order: item.sort })),
+      items.map((item) =>
+        db.update('ai_models', { id: item.id, provider_id: providerId }, { sort: item.sort }),
+      ),
     );
   };
 

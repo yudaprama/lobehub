@@ -10,7 +10,7 @@ export class ServerService {
     return db.select('generation_topics', {
       ...(type ? { where: { type } } : {}),
       order: ['created_at:desc'],
-    });
+    }) as any;
   }
 
   async createTopic(type?: 'image' | 'video'): Promise<string> {
@@ -23,8 +23,8 @@ export class ServerService {
 
   async updateTopic(id: string, data: UpdateTopicValue): Promise<GenerationTopicItem | undefined> {
     const db = await getLobehubClient();
-    const [row] = await db.update('generation_topics', { id }, data);
-    return row;
+    const [row] = await db.update('generation_topics', { id }, data as any);
+    return row as any;
   }
 
   // Stays on BFF — calls generationService.createCoverFromUrl (image processing)

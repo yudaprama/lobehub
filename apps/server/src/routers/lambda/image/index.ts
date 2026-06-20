@@ -37,7 +37,12 @@ const imageProcedure = wsCompatProcedure.use(serverDatabase).use(async (opts) =>
   return opts.next({
     ctx: {
       asyncTaskModel: new AsyncTaskModel(ctx.serverDB, ctx.userId, wsId),
-      fileService: new FileService(ctx.serverDB, ctx.userId, wsId, ctx.kratosSessionToken),
+      fileService: new FileService(
+        ctx.serverDB,
+        ctx.userId,
+        wsId,
+        ctx.kratosSessionToken ?? undefined,
+      ),
     },
   });
 });
@@ -285,7 +290,7 @@ export const imageRouter = router({
         generationsWithTasks.forEach(({ generation, asyncTaskId }) => {
           log('Starting background async task %s for generation %s', asyncTaskId, generation.id);
 
-          asyncCaller.image.createImage({
+          (asyncCaller as any).image.createImage({
             generationBatchId: createdBatch.id,
             generationId: generation.id,
             generationTopicId,

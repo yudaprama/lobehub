@@ -147,7 +147,7 @@ export const knowledgeBaseRouter = router({
           ctx.serverDB,
           ctx.userId,
           ctx.workspaceId ?? undefined,
-          ctx.kratosSessionToken,
+          ctx.kratosSessionToken ?? undefined,
         );
         const urls = result.deletedFiles.map((f) => f.url).filter(Boolean) as string[];
         if (urls.length > 0) {

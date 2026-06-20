@@ -75,22 +75,6 @@ export const authRoutes: RouteObject[] = [
   {
     children: [
       {
-        element: lazyElement(() => import('@/routes/auth/signin')),
-        path: 'signin',
-      },
-      {
-        element: lazyElement(() => import('@/routes/auth/signup')),
-        path: 'signup',
-      },
-      {
-        element: lazyElement(() => import('@/routes/auth/verify-email')),
-        path: 'verify-email',
-      },
-      {
-        element: lazyElement(() => import('@/routes/auth/reset-password')),
-        path: 'reset-password',
-      },
-      {
         element: lazyElement(() => import('@/routes/auth/auth-error')),
         path: 'auth-error',
       },

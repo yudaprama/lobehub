@@ -258,7 +258,7 @@ class AgentService {
     }
 
     const client = await getPrestClient();
-    const rows = await client.select<{ count: number }[]>('lobehub', 'public', 'agents', {
+    const rows = await client.select<{ count: number }>('lobehub', 'public', 'agents', {
       count: true,
       where: { virtual: false },
     });

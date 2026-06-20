@@ -1,5 +1,5 @@
-import { AlistClient } from 'alist-kratos-sdk';
 import { type LobeChatDatabase } from '@lobechat/database';
+import { AlistClient } from 'alist-kratos-sdk';
 import debug from 'debug';
 
 import { FileModel } from '@/database/models/file';
@@ -52,9 +52,7 @@ export class AlistStaticFileImpl implements FileServiceImpl {
     return new Uint8Array(await res.arrayBuffer());
   }
 
-  async getFileMetadata(
-    key: string,
-  ): Promise<{ contentLength: number; contentType?: string }> {
+  async getFileMetadata(key: string): Promise<{ contentLength: number; contentType?: string }> {
     try {
       const { data } = await this.alist.get(key);
       return { contentLength: data.size, contentType: undefined };
@@ -95,12 +93,12 @@ export class AlistStaticFileImpl implements FileServiceImpl {
   }
 
   async uploadBuffer(key: string, buffer: Buffer, contentType: string): Promise<{ key: string }> {
-    await this.alist.upload(key, buffer, { contentType });
+    await this.alist.upload(key, new Blob([buffer as any], { type: contentType }));
     return { key };
   }
 
   async uploadMedia(key: string, buffer: Buffer): Promise<{ key: string }> {
-    await this.alist.upload(key, buffer);
+    await this.alist.upload(key, new Blob([buffer as any]));
     return { key };
   }
 

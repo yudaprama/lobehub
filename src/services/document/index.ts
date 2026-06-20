@@ -1,5 +1,6 @@
 import { CUSTOM_DOCUMENT_FILE_TYPE } from '@lobechat/const';
 import { type DocumentItem } from '@lobechat/database/schemas';
+import type { Filter } from 'prest-js-sdk';
 
 import { getPrestClient } from '@/libs/prest/client';
 import { lambdaClient } from '@/libs/trpc/client';
@@ -143,7 +144,7 @@ export class DocumentService {
   }): Promise<{ items: DocumentItem[]; total: number }> {
     const client = await getPrestClient();
 
-    const where: Record<string, unknown> = {};
+    const where: Filter = {};
     if (params?.fileTypes?.length) where.file_type = { in: params.fileTypes };
     if (params?.sourceTypes?.length) where.source_type = { in: params.sourceTypes };
 
@@ -157,7 +158,7 @@ export class DocumentService {
         size,
         where: Object.keys(where).length ? where : undefined,
       }),
-      client.select<{ count: number }[]>('lobehub', 'public', 'documents', {
+      client.select<{ count: number }>('lobehub', 'public', 'documents', {
         count: true,
         where: Object.keys(where).length ? where : undefined,
       }),
