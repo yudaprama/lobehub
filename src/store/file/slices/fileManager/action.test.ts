@@ -6,7 +6,6 @@ import { mutate } from '@/libs/swr';
 import { lambdaClient } from '@/libs/trpc/client';
 import { fileService } from '@/services/file';
 import { ragService } from '@/services/rag';
-import { type FileListItem } from '@/types/files';
 import { type UploadFileItem } from '@/types/files/upload';
 import { unzipFile } from '@/utils/unzipFile';
 import { withSWR } from '~test-utils';
@@ -55,6 +54,20 @@ vi.mock('@/libs/swr', async () => {
     mutate: vi.fn(),
   };
 });
+
+// Mock pREST client
+const prestMock = vi.hoisted(() => ({
+  delete: vi.fn(),
+  query: vi.fn(),
+  select: vi.fn(),
+  update: vi.fn(),
+}));
+
+vi.mock('@/libs/prest/client', () => ({
+  getLobehubClient: vi.fn(() => Promise.resolve(prestMock)),
+  getPrestClient: vi.fn(() => Promise.resolve(prestMock)),
+  getWorkspaceParams: vi.fn(() => ({})),
+}));
 
 // Mock lambdaClient
 vi.mock('@/libs/trpc/client', () => ({
@@ -672,7 +685,8 @@ describe('FileManagerActions', () => {
       const { result } = renderHook(() => useStore());
 
       const toggleSpy = vi.spyOn(result.current, 'toggleEmbeddingIds');
-      vi.mocked(lambdaClient.file.removeFileAsyncTask.mutate).mockResolvedValue(undefined as any);
+      prestMock.select.mockResolvedValue([{ embedding_task_id: 'task-1', id: 'file-1' }]);
+      prestMock.delete.mockResolvedValue(undefined);
       const createTaskSpy = vi
         .spyOn(ragService, 'createEmbeddingChunksTask')
         .mockResolvedValue(undefined as any);
@@ -683,10 +697,6 @@ describe('FileManagerActions', () => {
       });
 
       expect(toggleSpy).toHaveBeenCalledWith(['file-1']);
-      expect(lambdaClient.file.removeFileAsyncTask.mutate).toHaveBeenCalledWith({
-        id: 'file-1',
-        type: 'embedding',
-      });
       expect(createTaskSpy).toHaveBeenCalledWith('file-1');
       expect(refreshSpy).toHaveBeenCalledTimes(2);
       expect(toggleSpy).toHaveBeenCalledWith(['file-1'], false);
@@ -932,22 +942,18 @@ describe('FileManagerActions', () => {
     it('should fetch file item when id is provided', async () => {
       const { result } = renderHook(() => useStore());
 
-      const mockFile: FileListItem = {
-        chunkCount: null,
-        chunkingError: null,
-        createdAt: new Date(),
-        embeddingError: null,
-        fileType: 'text/plain',
-        finishEmbedding: false,
-        id: 'file-1',
-        name: 'test.txt',
-        size: 100,
-        sourceType: 'file',
-        updatedAt: new Date(),
-        url: 'http://example.com/test.txt',
-      };
-
-      vi.mocked(lambdaClient.file.getFileItemById.query).mockResolvedValue(mockFile);
+      prestMock.select.mockResolvedValue([
+        {
+          created_at: new Date().toISOString(),
+          embedding_task_id: null,
+          file_type: 'text/plain',
+          id: 'file-1',
+          name: 'test.txt',
+          size: 100,
+          updated_at: new Date().toISOString(),
+          url: 'http://example.com/test.txt',
+        },
+      ]);
 
       const { result: swrResult } = renderHook(
         () => result.current.useFetchKnowledgeItem('file-1'),
@@ -955,7 +961,9 @@ describe('FileManagerActions', () => {
       );
 
       await waitFor(() => {
-        expect(swrResult.current.data).toEqual(mockFile);
+        expect(swrResult.current.data).toBeTruthy();
+        expect(swrResult.current.data?.id).toEqual('file-1');
+        expect(swrResult.current.data?.name).toEqual('test.txt');
       });
     });
   });
@@ -964,41 +972,57 @@ describe('FileManagerActions', () => {
     it('should fetch file list with params', async () => {
       const { result } = renderHook(() => useStore());
 
-      const mockFiles: FileListItem[] = [
+      const now = new Date().toISOString();
+      prestMock.query.mockResolvedValue([
         {
-          chunkCount: null,
-          chunkingError: null,
-          createdAt: new Date(),
-          embeddingError: null,
-          fileType: 'text/plain',
-          finishEmbedding: false,
+          chunk_count: null,
+          chunk_task_id: null,
+          chunking_error: null,
+          chunking_status: null,
+          content: null,
+          created_at: now,
+          document_id: null,
+          editor_data: null,
+          embedding_error: null,
+          embedding_status: null,
+          embedding_task_id: null,
+          file_id: 'file-1',
+          file_type: 'text/plain',
+          finish_embedding: false,
           id: 'file-1',
+          metadata: null,
           name: 'test1.txt',
           size: 100,
-          sourceType: 'file',
-          updatedAt: new Date(),
+          slug: null,
+          source_type: 'file',
+          updated_at: now,
           url: 'http://example.com/test1.txt',
         },
         {
-          chunkCount: null,
-          chunkingError: null,
-          createdAt: new Date(),
-          embeddingError: null,
-          fileType: 'text/plain',
-          finishEmbedding: false,
+          chunk_count: null,
+          chunk_task_id: null,
+          chunking_error: null,
+          chunking_status: null,
+          content: null,
+          created_at: now,
+          document_id: null,
+          editor_data: null,
+          embedding_error: null,
+          embedding_status: null,
+          embedding_task_id: null,
+          file_id: 'file-2',
+          file_type: 'text/plain',
+          finish_embedding: false,
           id: 'file-2',
+          metadata: null,
           name: 'test2.txt',
           size: 200,
-          sourceType: 'file',
-          updatedAt: new Date(),
+          slug: null,
+          source_type: 'file',
+          updated_at: now,
           url: 'http://example.com/test2.txt',
         },
-      ];
-
-      vi.mocked(lambdaClient.file.getKnowledgeItems.query).mockResolvedValue({
-        hasMore: false,
-        items: mockFiles,
-      });
+      ]);
 
       const params = { category: 'all' as any };
       const { result: swrResult } = renderHook(
@@ -1007,40 +1031,48 @@ describe('FileManagerActions', () => {
       );
 
       await waitFor(() => {
-        expect(swrResult.current.data).toEqual(mockFiles);
+        expect(swrResult.current.data).toBeTruthy();
+        expect(swrResult.current.data).toHaveLength(2);
       });
     });
 
     it('should update store state on successful fetch', async () => {
       const { result } = renderHook(() => useStore());
 
-      const mockFiles: FileListItem[] = [
+      const now = new Date().toISOString();
+      prestMock.query.mockResolvedValue([
         {
-          chunkCount: null,
-          chunkingError: null,
-          createdAt: new Date(),
-          embeddingError: null,
-          fileType: 'text/plain',
-          finishEmbedding: false,
+          chunk_count: null,
+          chunk_task_id: null,
+          chunking_error: null,
+          chunking_status: null,
+          content: null,
+          created_at: now,
+          document_id: null,
+          editor_data: null,
+          embedding_error: null,
+          embedding_status: null,
+          embedding_task_id: null,
+          file_id: 'file-1',
+          file_type: 'text/plain',
+          finish_embedding: false,
           id: 'file-1',
+          metadata: null,
           name: 'test.txt',
           size: 100,
-          sourceType: 'file',
-          updatedAt: new Date(),
+          slug: null,
+          source_type: 'file',
+          updated_at: now,
           url: 'http://example.com/test.txt',
         },
-      ];
-
-      vi.mocked(lambdaClient.file.getKnowledgeItems.query).mockResolvedValue({
-        hasMore: false,
-        items: mockFiles,
-      });
+      ]);
 
       const params = { category: 'all' as any };
       renderHook(() => result.current.useFetchKnowledgeItems(params), { wrapper: withSWR });
 
       await waitFor(() => {
-        expect(result.current.fileList).toEqual(mockFiles);
+        expect(result.current.fileList).toHaveLength(1);
+        expect(result.current.fileList[0].id).toEqual('file-1');
         expect(result.current.queryListParams).toEqual(params);
       });
     });

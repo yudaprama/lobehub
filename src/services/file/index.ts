@@ -8,10 +8,67 @@ import {
   type FileItem,
   type FileListItem,
   type KnowledgeItemStatus,
+  type PaginatedFileList,
   type QueryFileListParams,
   type QueryFileListSchemaType,
   type UploadFileParams,
 } from '@/types/files';
+
+interface KnowledgeItemRow {
+  chunk_count: number | null;
+  chunk_task_id: string | null;
+  chunking_error: any | null;
+  chunking_status: string | null;
+  content: string | null;
+  created_at: string;
+  document_id: string | null;
+  editor_data: any | null;
+  embedding_error: any | null;
+  embedding_status: string | null;
+  embedding_task_id: string | null;
+  file_id: string | null;
+  file_type: string;
+  finish_embedding: boolean;
+  id: string;
+  metadata: any | null;
+  name: string;
+  size: number;
+  slug: string | null;
+  source_type: string;
+  updated_at: string;
+  url: string;
+}
+
+const isDev = process.env.NODE_ENV === 'development';
+
+const resolveFileAccessUrl = (fileId: string | null, rawUrl: string): string => {
+  if (!isDev && fileId) {
+    return `${window.location.origin}/f/${fileId}`;
+  }
+  return rawUrl;
+};
+
+const mapRowToFileListItem = (row: KnowledgeItemRow): FileListItem => ({
+  chunkCount: row.chunk_count,
+  chunkingError: row.chunking_error,
+  chunkingStatus: row.chunking_status as any,
+  content: row.content,
+  createdAt: new Date(row.created_at),
+  editorData: row.editor_data,
+  embeddingError: row.embedding_error,
+  embeddingStatus: row.embedding_status as any,
+  fileType: row.file_type,
+  finishEmbedding: row.finish_embedding,
+  id: row.id,
+  metadata: row.metadata,
+  name: row.name,
+  parentId: null,
+  size: Number(row.size),
+  slug: row.slug,
+  sourceType: row.source_type,
+  updatedAt: new Date(row.updated_at),
+  url: resolveFileAccessUrl(row.file_id, row.url),
+});
 
 interface CreateFileParams extends Omit<UploadFileParams, 'url'> {
   knowledgeBaseId?: string;
@@ -127,9 +184,34 @@ export class FileService {
     }
   };
 
-  // V2.0 Migrate from getFiles to getKnowledgeItems
-  getKnowledgeItems = async (params: QueryFileListParams) => {
-    return lambdaClient.file.getKnowledgeItems.query(params as QueryFileListSchemaType);
+  getKnowledgeItems = async (params: QueryFileListParams): Promise<PaginatedFileList> => {
+    const client = await getPrestClient();
+    const limit = params.limit ?? 50;
+
+    const queryParams: Record<string, string | number | boolean> = {
+      size: limit + 1,
+      ...getWorkspaceParams(),
+    };
+    if (params.knowledgeBaseId) queryParams.knowledgeBaseId = params.knowledgeBaseId;
+    if (params.category) queryParams.category = params.category;
+    if (params.q) queryParams.qPattern = `%${params.q}%`;
+    if (params.parentId !== undefined) queryParams.parentId = params.parentId ?? 'null';
+    if (params.showFilesInKnowledgeBase) queryParams.showFilesInKnowledgeBase = true;
+    if (params.sorter) queryParams.sorter = params.sorter;
+    if (params.sortType) queryParams.sortType = params.sortType;
+    if (params.offset) queryParams.page = Math.floor(params.offset / limit) + 1;
+
+    const rawRows = await client.query<KnowledgeItemRow>(
+      'lobehub',
+      'knowledgeItemsList',
+      queryParams,
+    );
+
+    const hasMore = rawRows.length > limit;
+    const rowsToProcess = hasMore ? rawRows.slice(0, limit) : rawRows;
+    const items = rowsToProcess.map(mapRowToFileListItem);
+
+    return { hasMore, items };
   };
 
   getKnowledgeItemStatusesByIds = async (ids: string[]): Promise<KnowledgeItemStatus[]> => {
