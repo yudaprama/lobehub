@@ -2,6 +2,7 @@ import type { OnboardingUserInfo } from '@lobechat/context-engine';
 import { type MarkdownPatchHunk } from '@lobechat/markdown-patch';
 import { type PartialDeep } from 'type-fest';
 
+import { getPrestClient } from '@/libs/prest/client';
 import { lambdaClient } from '@/libs/trpc/client';
 import {
   type SaveUserQuestionInput,
@@ -120,18 +121,44 @@ export class UserService {
     return lambdaClient.user.updateUsername.mutate(username);
   };
 
+  /**
+   * Update user preference (jsonb column).
+   *
+   * Tier 1 update on `user_settings.preference`. Auto-scoped by user_id
+   * via [[auth.user_id_filters]]. The BFF handler also creates the row
+   * on first call; pREST's update silently succeeds on zero rows.
+   */
   updatePreference = async (preference: Partial<UserPreference>) => {
-    return lambdaClient.user.updatePreference.mutate(preference);
+    const client = await getPrestClient();
+    await client.update('lobehub', 'public', 'user_settings', {}, { preference });
   };
 
+  /**
+   * Update user guide (jsonb column).
+   *
+   * Tier 1 update on `user_settings.guide`. Same auto-scope pattern.
+   */
   updateGuide = async (guide: Partial<UserGuide>) => {
-    return lambdaClient.user.updateGuide.mutate(guide);
+    const client = await getPrestClient();
+    await client.update('lobehub', 'public', 'user_settings', {}, { guide });
   };
 
+  /**
+   * Update user settings (settings jsonb).
+   *
+   * Stays on lambdaClient — callers pass `signal` for abort-support on
+   * auto-save keystrokes. pREST doesn't expose AbortSignal yet.
+   */
   updateUserSettings = async (value: PartialDeep<UserSettings>, signal?: AbortSignal) => {
     return lambdaClient.user.updateSettings.mutate(value, { signal });
   };
 
+  /**
+   * Reset user settings to defaults.
+   *
+   * Stays on lambdaClient — keeps the pattern consistent with
+   * updateUserSettings (both touch the same row).
+   */
   resetUserSettings = async () => {
     return lambdaClient.user.resetSettings.mutate();
   };

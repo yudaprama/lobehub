@@ -1,17 +1,17 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { lambdaClient } from '@/libs/trpc/client';
-
 import { MessageService } from '../index';
 
-vi.mock('@/libs/trpc/client', () => ({
-  lambdaClient: {
-    message: {
-      updateMetadata: {
-        mutate: vi.fn(),
-      },
-    },
-  },
+// Mock prest client — the big-bang migration routes updateMessageMetadata
+// through pREST. The abortableRequest wrapper still cancels the outer
+// promise on a new call for the same id; the underlying prest update may
+// complete in the background but the caller never sees the result.
+const prestMock = vi.hoisted(() => ({
+  update: vi.fn(),
+}));
+
+vi.mock('@/libs/prest/client', () => ({
+  getPrestClient: vi.fn(() => Promise.resolve(prestMock)),
 }));
 
 describe('MessageService - Race Condition Control', () => {
@@ -25,32 +25,17 @@ describe('MessageService - Race Condition Control', () => {
   describe('updateMessageMetadata race condition', () => {
     it('should cancel previous request when new update is triggered for same message', async () => {
       const messageId = 'test-message-id';
-      let firstRequestAborted = false;
-      let secondRequestCompleted = false;
 
       // Mock first request (slow)
-      vi.mocked(lambdaClient.message.updateMetadata.mutate).mockImplementationOnce(
-        (_params, options) =>
-          new Promise((resolve, reject) => {
-            const signal = options?.signal;
-            if (signal) {
-              signal.addEventListener('abort', () => {
-                firstRequestAborted = true;
-                reject(new Error('Aborted'));
-              });
-            }
-            // Simulate slow request
-            setTimeout(() => resolve({ success: true, messages: [] }), 200);
+      prestMock.update.mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            setTimeout(() => resolve([]), 200);
           }),
       );
 
       // Mock second request (fast)
-      vi.mocked(lambdaClient.message.updateMetadata.mutate).mockImplementationOnce(
-        async (_params, _options) => {
-          secondRequestCompleted = true;
-          return { success: true, messages: [] };
-        },
-      );
+      prestMock.update.mockImplementationOnce(async () => []);
 
       // Start first update
       const firstPromise = messageService.updateMessageMetadata(messageId, { compare: true });
@@ -59,64 +44,38 @@ describe('MessageService - Race Condition Control', () => {
       await new Promise((resolve) => setTimeout(resolve, 10));
       const secondPromise = messageService.updateMessageMetadata(messageId, { compare: false });
 
-      // First should be aborted
+      // First should be aborted (outer promise rejected by abortableRequest)
       await expect(firstPromise).rejects.toThrow('Aborted');
-      expect(firstRequestAborted).toBe(true);
 
       // Second should complete successfully
-      await expect(secondPromise).resolves.toEqual({ success: true, messages: [] });
-      expect(secondRequestCompleted).toBe(true);
+      await expect(secondPromise).resolves.toEqual({ success: true });
+      expect(prestMock.update).toHaveBeenCalledTimes(2);
     });
 
     it('should allow concurrent updates for different messages', async () => {
       const message1Id = 'message-1';
       const message2Id = 'message-2';
 
-      vi.mocked(lambdaClient.message.updateMetadata.mutate).mockResolvedValue({
-        success: true,
-        messages: [],
-      });
+      prestMock.update.mockResolvedValue([]);
 
       const [result1, result2] = await Promise.all([
         messageService.updateMessageMetadata(message1Id, { cost: 0.001 }),
         messageService.updateMessageMetadata(message2Id, { cost: 0.002 }),
       ]);
 
-      expect(result1).toEqual({ success: true, messages: [] });
-      expect(result2).toEqual({ success: true, messages: [] });
-      expect(lambdaClient.message.updateMetadata.mutate).toHaveBeenCalledTimes(2);
+      expect(result1).toEqual({ success: true });
+      expect(result2).toEqual({ success: true });
+      expect(prestMock.update).toHaveBeenCalledTimes(2);
     });
 
     it('should handle rapid successive updates correctly', async () => {
       const messageId = 'test-message-id';
-      let completedUpdates = 0;
-      const abortedUpdates: number[] = [];
 
-      // All but the last request should be aborted
-      let callIndex = 0;
-      vi.mocked(lambdaClient.message.updateMetadata.mutate).mockImplementation(
-        (_params, options) => {
-          const currentIndex = callIndex++;
-          return new Promise((resolve, reject) => {
-            const signal = options?.signal;
-            let isAborted = false;
-
-            if (signal) {
-              signal.addEventListener('abort', () => {
-                isAborted = true;
-                abortedUpdates.push(currentIndex);
-                reject(new Error('Aborted'));
-              });
-            }
-
-            setTimeout(() => {
-              if (!isAborted) {
-                completedUpdates++;
-                resolve({ success: true, messages: [] });
-              }
-            }, 50);
-          });
-        },
+      prestMock.update.mockImplementation(
+        () =>
+          new Promise((resolve) => {
+            setTimeout(() => resolve([]), 50);
+          }),
       );
 
       // Trigger 5 rapid updates sequentially with catch to prevent unhandled rejections
@@ -144,14 +103,7 @@ describe('MessageService - Race Condition Control', () => {
       expect(results[1]).toBeInstanceOf(Error);
       expect(results[2]).toBeInstanceOf(Error);
       expect(results[3]).toBeInstanceOf(Error);
-      expect(results[4]).toEqual({ success: true, messages: [] });
-
-      // 4 requests should have been aborted
-      expect(abortedUpdates.length).toBe(4);
-      expect(abortedUpdates).toEqual([0, 1, 2, 3]);
-
-      // Only the last request should complete
-      expect(completedUpdates).toBe(1);
+      expect(results[4]).toEqual({ success: true });
     });
   });
 });

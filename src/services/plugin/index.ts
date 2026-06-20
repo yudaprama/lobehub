@@ -1,5 +1,6 @@
 import { type LobeTool, type ToolManifest } from '@lobechat/types';
 
+import { getPrestClient } from '@/libs/prest/client';
 import { lambdaClient } from '@/libs/trpc/client';
 import { type LobeToolCustomPlugin } from '@/types/tool/plugin';
 
@@ -11,13 +12,43 @@ export interface InstallPluginParams {
   type: 'plugin' | 'customPlugin';
 }
 
+interface InstalledPluginRow {
+  created_at: string;
+  custom_params: Record<string, any> | null;
+  identifier: string;
+  manifest: ToolManifest | null;
+  settings: Record<string, any> | null;
+  source: string | null;
+  type: 'plugin' | 'customPlugin';
+  updated_at: string;
+  user_id: string;
+}
+
+const toLobeTool = (row: InstalledPluginRow): LobeTool => ({
+  identifier: row.identifier,
+  manifest: row.manifest ?? undefined,
+  settings: row.settings ?? undefined,
+  type: row.type,
+});
+
 export class PluginService {
   installPlugin = async (plugin: InstallPluginParams): Promise<void> => {
     await lambdaClient.plugin.createOrInstallPlugin.mutate(plugin);
   };
 
-  getInstalledPlugins = (): Promise<LobeTool[]> => {
-    return lambdaClient.plugin.getPlugins.query();
+  getInstalledPlugins = async (): Promise<LobeTool[]> => {
+    const client = await getPrestClient();
+    const rows = await client.select<InstalledPluginRow>(
+      'lobehub',
+      'public',
+      'user_installed_plugins',
+      {
+        order: ['updated_at:desc'],
+        size: 100,
+      },
+    );
+
+    return (Array.isArray(rows) ? rows : []).map(toLobeTool);
   };
 
   uninstallPlugin = async (identifier: string): Promise<void> => {

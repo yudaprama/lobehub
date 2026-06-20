@@ -1,6 +1,7 @@
 import { type CreateMessageParams } from '@lobechat/types';
 
 import { INBOX_SESSION_ID } from '@/const/session';
+import { getPrestClient } from '@/libs/prest/client';
 import { lambdaClient } from '@/libs/trpc/client';
 import { type CreateThreadParams, type ThreadItem } from '@/types/topic';
 
@@ -9,14 +10,21 @@ interface CreateThreadWithMessageParams extends CreateThreadParams {
 }
 
 export class ThreadService {
-  getThreads = (topicId: string): Promise<ThreadItem[]> => {
-    return lambdaClient.thread.getThreads.query({ topicId });
+  getThreads = async (topicId: string): Promise<ThreadItem[]> => {
+    const client = await getPrestClient();
+
+    // Tier 2 stored SQL template handles userId scoping + message subqueries.
+    return client.query<ThreadItem>('lobehub', 'threadMessages', { topicId });
   };
 
   createThreadWithMessage = async ({
     message,
     ...params
   }: CreateThreadWithMessageParams): Promise<{ messageId: string; threadId: string }> => {
+    // createThreadWithMessage is a two-step write (thread + message) inside a
+    // single transaction on the BFF. pREST does not expose a multi-write
+    // endpoint, so the migration falls back to the legacy tRPC path until a
+    // dedicated `/_QUERIES/lobehub/threadCreateWithMessage` template exists.
     return lambdaClient.thread.createThreadWithMessage.mutate({
       ...params,
       message: { ...message, sessionId: this.toDbSessionId(message.sessionId) },
@@ -24,15 +32,45 @@ export class ThreadService {
   };
 
   createThread = async (params: CreateThreadParams): Promise<string> => {
-    return lambdaClient.thread.createThread.mutate(params);
+    const client = await getPrestClient();
+
+    const [row] = await client.insert<{ id: string }>('lobehub', 'public', 'threads', {
+      id: params.id ?? crypto.randomUUID(),
+      title: params.title ?? null,
+      topic_id: params.topicId,
+      type: params.type,
+      source_message_id: params.sourceMessageId ?? null,
+      parent_thread_id: params.parentThreadId ?? null,
+      client_id: params.clientId ?? null,
+      agent_id: params.agentId ?? null,
+      group_id: params.groupId ?? null,
+      content: null,
+      editor_data: null,
+      metadata: params.metadata ?? null,
+      last_active_at: new Date().toISOString(),
+      accessed_at: new Date().toISOString(),
+    });
+    return row.id;
   };
 
   updateThread = async (id: string, data: Partial<ThreadItem>) => {
-    return lambdaClient.thread.updateThread.mutate({ id, value: data });
+    const client = await getPrestClient();
+
+    const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
+    if (data.title !== undefined) patch.title = data.title;
+    if (data.status !== undefined) patch.status = data.status;
+    if (data.metadata !== undefined) patch.metadata = data.metadata;
+    if (data.content !== undefined) patch.content = data.content;
+    if (data.editorData !== undefined) patch.editor_data = data.editorData;
+    if (data.lastActiveAt) patch.last_active_at = data.lastActiveAt;
+
+    await client.update('lobehub', 'public', 'threads', { id }, patch);
   };
 
   removeThread = async (id: string) => {
-    return lambdaClient.thread.removeThread.mutate({ id });
+    const client = await getPrestClient();
+
+    await client.delete('lobehub', 'public', 'threads', { id });
   };
 
   private toDbSessionId = (sessionId: string | undefined) => {

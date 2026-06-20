@@ -2,17 +2,17 @@ import { AgentRuntimeError } from '@lobechat/model-runtime';
 import { ChatErrorType } from '@lobechat/types';
 
 interface CheckAuthParams {
-  betterAuthAuthorized?: boolean;
+  kratosAuthorized?: boolean;
 }
 
 /**
  * Check if authentication is valid.
- * Only accepts a verified server-side session (Better Auth).
+ * Only accepts a verified server-side session (Kratos).
  */
 export const checkAuthMethod = (params: CheckAuthParams) => {
-  const { betterAuthAuthorized } = params;
+  const { kratosAuthorized } = params;
 
-  if (betterAuthAuthorized) return;
+  if (kratosAuthorized) return;
 
   throw AgentRuntimeError.createError(ChatErrorType.Unauthorized);
 };

@@ -1,16 +1,21 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { lambdaClient } from '@/libs/trpc/client';
-
 import { generationService } from '../generation';
 
-vi.mock('@/libs/trpc/client', () => ({
-  lambdaClient: {
-    generation: {
-      getGenerationStatus: { query: vi.fn() },
-      deleteGeneration: { mutate: vi.fn() },
-    },
-  },
+const prestMock = vi.hoisted(() => ({
+  select: vi.fn(() => Promise.resolve([])),
+  delete: vi.fn(() => Promise.resolve([])),
+}));
+
+vi.mock('@/libs/prest/client', () => ({
+  getPrestClient: vi.fn(() => Promise.resolve(prestMock)),
+  getLobehubClient: vi.fn(() =>
+    Promise.resolve({
+      client: prestMock,
+      select: prestMock.select,
+      delete: prestMock.delete,
+    }),
+  ),
 }));
 
 describe('GenerationService', () => {
@@ -18,23 +23,29 @@ describe('GenerationService', () => {
     vi.clearAllMocks();
   });
 
-  it('getGenerationStatus should call lambdaClient with correct params', async () => {
+  it('getGenerationStatus should fetch generation and async task via prest', async () => {
     const generationId = 'test-generation-id';
     const asyncTaskId = 'test-async-task-id';
 
-    await generationService.getGenerationStatus(generationId, asyncTaskId);
+    prestMock.select
+      .mockResolvedValueOnce([{ id: generationId, generation_batch_id: 'b1' }]) // generation row
+      .mockResolvedValueOnce([{ id: asyncTaskId, status: 'completed' }]); // async task row
 
-    expect(lambdaClient.generation.getGenerationStatus.query).toBeCalledWith({
-      generationId,
-      asyncTaskId,
+    const result = await generationService.getGenerationStatus(generationId, asyncTaskId);
+
+    expect(result).toEqual({
+      id: generationId,
+      generation_batch_id: 'b1',
+      async_task: { id: asyncTaskId, status: 'completed' },
     });
+    expect(prestMock.select).toHaveBeenCalledTimes(2);
   });
 
-  it('deleteGeneration should call lambdaClient with correct params', async () => {
+  it('deleteGeneration should call prest delete', async () => {
     const generationId = 'test-generation-id';
 
     await generationService.deleteGeneration(generationId);
 
-    expect(lambdaClient.generation.deleteGeneration.mutate).toBeCalledWith({ generationId });
+    expect(prestMock.delete).toHaveBeenCalled();
   });
 });
