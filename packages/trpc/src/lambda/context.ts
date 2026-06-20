@@ -71,6 +71,7 @@ export interface OIDCAuth {
 export interface AuthContext {
   clientIp?: string | null;
   jwtPayload?: ClientSecretPayload | null;
+  kratosSessionToken?: string | null;
   marketAccessToken?: string;
   // Add OIDC authentication information
   oidcAuth?: OIDCAuth | null;
@@ -93,12 +94,14 @@ export const createContextInner = async (params?: {
   userAgent?: string;
   userId?: string | null;
   workspaceId?: string | null;
+  kratosSessionToken?: string | null;
 }): Promise<AuthContext> => {
   log('createContextInner called with params: %O', params);
   const responseHeaders = new Headers();
 
   return {
     clientIp: params?.clientIp,
+    kratosSessionToken: params?.kratosSessionToken,
     marketAccessToken: params?.marketAccessToken,
     oidcAuth: params?.oidcAuth,
     resHeaders: responseHeaders,
@@ -143,8 +146,15 @@ export const createLambdaContext = async (request: NextRequest): Promise<LambdaC
   log('marketAccessToken from cookie:', marketAccessToken ? '[HIDDEN]' : 'undefined');
   const workspaceId = request.headers.get('X-Workspace-Id')?.trim() || undefined;
 
+  // Extract Kratos session token for AList file service authentication.
+  // The token is forwarded from the client's ory_kratos_session cookie via
+  // the x-session-token header, or read directly from the cookie.
+  const kratosSessionToken =
+    request.headers.get('x-session-token') || cookies['ory_kratos_session'] || undefined;
+
   const commonContext = {
     clientIp,
+    kratosSessionToken,
     marketAccessToken,
     userAgent,
     workspaceId,

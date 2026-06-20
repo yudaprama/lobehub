@@ -777,6 +777,20 @@
       "when": 1780832120210,
       "tag": "0110_add_verify_tables_and_ai_infra_id",
       "breakpoints": true
+    },
+    {
+      "idx": 111,
+      "version": "7",
+      "when": 1781870050894,
+      "tag": "0111_drop_llm_generation_tracing_and_schema_sync",
+      "breakpoints": true
+    },
+    {
+      "idx": 112,
+      "version": "7",
+      "when": 1781870093420,
+      "tag": "0112_add_postgres_fts",
+      "breakpoints": true
     }
   ],
   "version": "6"

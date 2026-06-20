@@ -13,7 +13,7 @@ import { type ServerRuntimeRegistration } from './types';
 
 export const knowledgeBaseRuntime: ServerRuntimeRegistration = {
   factory: (context) => {
-    const { userId, serverDB, agentId, workspaceId } = context;
+    const { userId, serverDB, agentId, workspaceId, kratosSessionToken } = context;
     if (!userId || !serverDB) {
       throw new Error('userId and serverDB are required for Knowledge Base execution');
     }
@@ -21,9 +21,9 @@ export const knowledgeBaseRuntime: ServerRuntimeRegistration = {
     const fileModel = new FileModel(serverDB, userId, workspaceId);
     const knowledgeBaseModel = new KnowledgeBaseModel(serverDB, userId, workspaceId);
     const knowledgeRepo = new KnowledgeRepo(serverDB, userId, workspaceId);
-    const documentService = new DocumentService(serverDB, userId, workspaceId);
-    const fileService = new FileService(serverDB, userId, workspaceId);
-    const searchService = new KnowledgeBaseSearchService(serverDB, userId, workspaceId);
+    const documentService = new DocumentService(serverDB, userId, workspaceId, kratosSessionToken);
+    const fileService = new FileService(serverDB, userId, workspaceId, kratosSessionToken);
+    const searchService = new KnowledgeBaseSearchService(serverDB, userId, workspaceId, kratosSessionToken);
     const agentModel = agentId ? new AgentModel(serverDB, userId, workspaceId) : null;
 
     const resolveAgentKnowledgeBaseIds = async (override?: string[]): Promise<string[]> => {

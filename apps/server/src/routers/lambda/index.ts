@@ -41,7 +41,6 @@ import { messengerRouter } from './messenger';
 import { notebookRouter } from './notebook';
 import { oauthDeviceFlowRouter } from './oauthDeviceFlow';
 import { ragEvalRouter } from './ragEval';
-import { recentRouter } from './recent';
 import { searchRouter } from './search';
 import { sessionRouter } from './session';
 import { shareRouter } from './share';
@@ -92,7 +91,6 @@ export const lambdaRouter = router({
   notebook: notebookRouter,
   oauthDeviceFlow: oauthDeviceFlowRouter,
   ragEval: ragEvalRouter,
-  recent: recentRouter,
   search: searchRouter,
   session: sessionRouter,
   share: shareRouter,

@@ -31,10 +31,15 @@ export class FileService {
 
   private impl: FileServiceImpl;
 
-  constructor(db: LobeChatDatabase, userId: string, workspaceId?: string) {
+  constructor(
+    db: LobeChatDatabase,
+    userId: string,
+    workspaceId?: string,
+    kratosSessionToken?: string,
+  ) {
     this.userId = userId;
     this.fileModel = new FileModel(db, userId, workspaceId);
-    this.impl = createFileServiceModule(db);
+    this.impl = createFileServiceModule(db, kratosSessionToken);
   }
 
   /**

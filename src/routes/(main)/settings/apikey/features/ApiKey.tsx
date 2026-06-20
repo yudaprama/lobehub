@@ -12,6 +12,7 @@ import { useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { usePermission } from '@/hooks/usePermission';
+import { getLobehubClient } from '@/libs/prest/client';
 import { lambdaClient } from '@/libs/trpc/client';
 import { type ApiKeyItem, type CreateApiKeyParams, type UpdateApiKeyParams } from '@/types/apiKey';
 
@@ -52,15 +53,26 @@ const ApiKey: FC = () => {
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, params }: { id: string; params: UpdateApiKeyParams }) =>
-      lambdaClient.apiKey.updateApiKey.mutate({ id, value: params }),
+    mutationFn: async ({ id, params }: { id: string; params: UpdateApiKeyParams }) => {
+      const db = await getLobehubClient();
+      const data: Record<string, unknown> = {};
+      if (params.name !== undefined) data.name = params.name;
+      if (params.enabled !== undefined) data.enabled = params.enabled;
+      if (params.expiresAt !== undefined) {
+        data.expires_at = params.expiresAt ? params.expiresAt.toISOString() : null;
+      }
+      await db.update('api_keys', { id }, data);
+    },
     onSuccess: () => {
       actionRef.current?.reload();
     },
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id: string) => lambdaClient.apiKey.deleteApiKey.mutate({ id }),
+    mutationFn: async (id: string) => {
+      const db = await getLobehubClient();
+      await db.delete('api_keys', { id });
+    },
     onSuccess: () => {
       actionRef.current?.reload();
     },

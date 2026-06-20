@@ -1,13 +1,25 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+const { mockPrestDb } = vi.hoisted(() => ({
+  mockPrestDb: {
+    delete: vi.fn().mockResolvedValue([]),
+    update: vi.fn().mockResolvedValue([{ id: 'brief_1' }]),
+  },
+}));
+
+// Mock pREST client (used by briefService.delete and markRead)
+vi.mock('@/libs/prest/client', () => ({
+  getLobehubClient: vi.fn().mockResolvedValue(mockPrestDb),
+}));
+
 import { lambdaClient } from '@/libs/trpc/client';
+import { briefService } from '@/services/brief';
 import { taskService } from '@/services/task';
 
 // Mock lambdaClient
 vi.mock('@/libs/trpc/client', () => ({
   lambdaClient: {
     brief: {
-      markRead: { mutate: vi.fn() },
       resolve: { mutate: vi.fn() },
     },
     task: {
@@ -190,17 +202,16 @@ describe('TaskService', () => {
   });
 
   describe('brief operations', () => {
-    it('resolveBrief should call brief.resolve.mutate', async () => {
+    it('resolveBrief should delegate to briefService.resolve', async () => {
+      const spy = vi.spyOn(briefService, 'resolve');
       await taskService.resolveBrief('brief_1', { action: 'approve' });
-      expect(lambdaClient.brief.resolve.mutate).toHaveBeenCalledWith({
-        action: 'approve',
-        id: 'brief_1',
-      });
+      expect(spy).toHaveBeenCalledWith('brief_1', { action: 'approve' });
     });
 
-    it('markBriefRead should call brief.markRead.mutate', async () => {
+    it('markBriefRead should delegate to briefService.markRead', async () => {
+      const spy = vi.spyOn(briefService, 'markRead');
       await taskService.markBriefRead('brief_1');
-      expect(lambdaClient.brief.markRead.mutate).toHaveBeenCalledWith({ id: 'brief_1' });
+      expect(spy).toHaveBeenCalledWith('brief_1');
     });
   });
 });

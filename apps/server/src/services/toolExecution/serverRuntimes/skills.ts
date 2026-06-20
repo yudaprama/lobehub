@@ -286,7 +286,12 @@ export const skillsRuntime: ServerRuntimeRegistration = {
       accessToken: marketAccessToken,
       userInfo: { userId: context.userId },
     });
-    const fileService = new FileService(context.serverDB, context.userId, context.workspaceId);
+    const fileService = new FileService(
+      context.serverDB,
+      context.userId,
+      context.workspaceId,
+      context.kratosSessionToken,
+    );
     const fileModel = new FileModel(context.serverDB, context.userId, context.workspaceId);
 
     const service = new SkillServerRuntimeService({

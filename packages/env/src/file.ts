@@ -29,10 +29,12 @@ export const getFileConfig = () => {
       NEXT_PUBLIC_PREST_URL: z.string().optional(),
     },
     runtimeEnv: {
+      ALIST_URL: process.env.ALIST_URL,
       CHUNKS_AUTO_EMBEDDING: process.env.CHUNKS_AUTO_EMBEDDING !== '0',
       CHUNKS_AUTO_GEN_METADATA: process.env.CHUNKS_AUTO_GEN_METADATA !== '0',
       EMBEDDING_BATCH_SIZE: process.env.EMBEDDING_BATCH_SIZE,
       EMBEDDING_CONCURRENCY: process.env.EMBEDDING_CONCURRENCY,
+      KRATOS_PUBLIC_URL: process.env.KRATOS_PUBLIC_URL,
 
       NEXT_PUBLIC_S3_DOMAIN: process.env.NEXT_PUBLIC_S3_DOMAIN,
       NEXT_PUBLIC_S3_FILE_PATH: process.env.NEXT_PUBLIC_S3_FILE_PATH || DEFAULT_S3_FILE_PATH,
@@ -51,10 +53,12 @@ export const getFileConfig = () => {
       S3_SET_ACL: process.env.S3_SET_ACL === '1',
     },
     server: {
+      ALIST_URL: z.string().url().optional(),
       CHUNKS_AUTO_EMBEDDING: z.boolean(),
       CHUNKS_AUTO_GEN_METADATA: z.boolean(),
       EMBEDDING_BATCH_SIZE: z.coerce.number().int().positive().default(50),
       EMBEDDING_CONCURRENCY: z.coerce.number().int().positive().default(10),
+      KRATOS_PUBLIC_URL: z.string().url().optional(),
 
       // S3
       S3_ACCESS_KEY_ID: z.string().optional(),

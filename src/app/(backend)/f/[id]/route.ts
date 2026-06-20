@@ -2,6 +2,7 @@ import debug from 'debug';
 
 import { FileModel } from '@/database/models/file';
 import { getServerDB } from '@/database/server';
+import { fileEnv } from '@/envs/file';
 import { FileService } from '@/server/services/file';
 
 const log = debug('lobe-file:proxy');
@@ -14,10 +15,10 @@ type Params = Promise<{ id: string }>;
  *
  * Features:
  * - Query database to get file record (without userId filter for public access)
- * - Generate a temporary S3 presigned preview URL
+ * - Generate a temporary AList signed URL or S3 presigned preview URL
  * - Return 302 redirect
  */
-export const GET = async (_req: Request, segmentData: { params: Params }) => {
+export const GET = async (req: Request, segmentData: { params: Params }) => {
   try {
     const params = await segmentData.params;
     const { id } = params;
@@ -37,12 +38,22 @@ export const GET = async (_req: Request, segmentData: { params: Params }) => {
       });
     }
 
-    // Create file service with file owner's userId
-    const fileService = new FileService(db, file.userId);
+    // Extract Kratos session token from cookies or header for AList authentication
+    const cookieHeader = req.headers.get('cookie') || '';
+    const kratosSessionToken =
+      req.headers.get('x-session-token') ||
+      cookieHeader
+        .split(';')
+        .find((c) => c.trim().startsWith('ory_kratos_session='))
+        ?.split('=')[1]?.trim() ||
+      undefined;
 
-    // Web: Generate a cached S3 presigned URL, normalizing legacy full S3 URLs.
+    // Create file service with file owner's userId
+    const fileService = new FileService(db, file.userId, undefined, kratosSessionToken);
+
+    // Generate the appropriate signed URL (AList or S3)
     const redirectUrl = await fileService.createCachedPreSignedUrlForPreview(file.url);
-    log('Web S3 presigned URL generated');
+    log('File proxy redirect URL generated');
 
     // Return 302 redirect
     return Response.redirect(redirectUrl, 302);

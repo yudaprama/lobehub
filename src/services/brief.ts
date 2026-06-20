@@ -1,8 +1,10 @@
+import { getLobehubClient } from '@/libs/prest/client';
 import { lambdaClient } from '@/libs/trpc/client';
 
 class BriefService {
   delete = async (id: string) => {
-    return lambdaClient.brief.delete.mutate({ id });
+    const db = await getLobehubClient();
+    await db.delete('briefs', { id });
   };
 
   listUnresolved = async () => {
@@ -10,7 +12,9 @@ class BriefService {
   };
 
   markRead = async (id: string) => {
-    return lambdaClient.brief.markRead.mutate({ id });
+    const db = await getLobehubClient();
+    const [row] = await db.update('briefs', { id }, { read_at: new Date().toISOString() });
+    return row ?? null;
   };
 
   resolve = async (id: string, params?: { action?: string; comment?: string }) => {

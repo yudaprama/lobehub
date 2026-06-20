@@ -24,7 +24,12 @@ export const cloudSandboxRuntime: ServerRuntimeRegistration = {
     }
 
     const marketService = new MarketService({ userInfo: { userId: context.userId } });
-    const fileService = new FileService(context.serverDB, context.userId, context.workspaceId);
+    const fileService = new FileService(
+      context.serverDB,
+      context.userId,
+      context.workspaceId,
+      context.kratosSessionToken,
+    );
     const sandboxService = createSandboxService({
       fileService,
       marketService,

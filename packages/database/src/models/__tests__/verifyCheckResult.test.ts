@@ -3,7 +3,7 @@ import type { VerifyCheckItem } from '@lobechat/types';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { getTestDB } from '../../core/getTestDB';
-import { agentOperations, llmGenerationTracing, users, verifyCheckResults } from '../../schemas';
+import { agentOperations, users, verifyCheckResults } from '../../schemas';
 import type { LobeChatDatabase } from '../../type';
 import { AgentOperationModel } from '../agentOperation';
 import { VerifyCheckResultModel } from '../verifyCheckResult';
@@ -32,7 +32,6 @@ beforeEach(async () => {
 
 afterEach(async () => {
   await serverDB.delete(verifyCheckResults);
-  await serverDB.delete(llmGenerationTracing);
   await serverDB.delete(agentOperations);
   await serverDB.delete(users);
 });
@@ -95,16 +94,9 @@ describe('VerifyCheckResultModel', () => {
 
   it('backfillTracingId fills NULL tracing ids for the named items only and is idempotent', async () => {
     const model = new VerifyCheckResultModel(serverDB, userId);
-    const [tracing] = await serverDB
-      .insert(llmGenerationTracing)
-      .values({
-        promptHash: 'hash',
-        promptVersion: 'v1',
-        scenario: 'verify',
-        success: true,
-        userId,
-      })
-      .returning();
+    // `verifier_tracing_id` is now an opaque Tempo span ID (no FK), so any
+    // stable string is a valid backfill target.
+    const tracingId = '00000000-0000-0000-0000-000000000001';
 
     await model.createMany([
       { checkItemId: 'a', checkItemIndex: 0, operationId, verifierType: 'llm' },
@@ -112,24 +104,24 @@ describe('VerifyCheckResultModel', () => {
     ]);
 
     // empty checkItemIds short-circuits (returns undefined, writes nothing)
-    expect(await model.backfillTracingId(operationId, [], tracing.id)).toBeUndefined();
+    expect(await model.backfillTracingId(operationId, [], tracingId)).toBeUndefined();
     expect(
       (await model.listByOperation(operationId)).every((r) => r.verifierTracingId === null),
     ).toBe(true);
 
-    await model.backfillTracingId(operationId, ['a'], tracing.id);
+    await model.backfillTracingId(operationId, ['a'], tracingId);
 
     const after = await model.listByOperation(operationId);
     const a = after.find((r) => r.checkItemId === 'a');
     const b = after.find((r) => r.checkItemId === 'b');
-    expect(a?.verifierTracingId).toBe(tracing.id);
+    expect(a?.verifierTracingId).toBe(tracingId);
     // 'b' was not in the list → untouched
     expect(b?.verifierTracingId).toBeNull();
 
     // idempotent: re-running only fills NULLs, so 'a' keeps its existing id
-    await model.backfillTracingId(operationId, ['a'], tracing.id);
+    await model.backfillTracingId(operationId, ['a'], tracingId);
     const reloaded = await model.findById(a!.id);
-    expect(reloaded?.verifierTracingId).toBe(tracing.id);
+    expect(reloaded?.verifierTracingId).toBe(tracingId);
   });
 
   it('updates a result by its stable (operationId, checkItemId) key', async () => {

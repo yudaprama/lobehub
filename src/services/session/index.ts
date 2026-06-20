@@ -1,6 +1,6 @@
 import { type PartialDeep } from 'type-fest';
 
-import { getLobehubClient, getPrestClient } from '@/libs/prest/client';
+import { getLobehubClient, getPrestClient, getWorkspaceParams } from '@/libs/prest/client';
 import { lambdaClient } from '@/libs/trpc/client';
 import { type LobeAgentChatConfig, type LobeAgentConfig } from '@/types/agent';
 import { type MetaData } from '@/types/meta';
@@ -46,7 +46,9 @@ export class SessionService {
     // Tier 2 stored SQL template handles userId scoping + session/group join
     // + last-message preview. The shape matches ChatSessionList by
     // construction — the template was authored against this consumer.
-    return client.query<ChatSessionList>('lobehub', 'sessionsListGrouped', {});
+    return client.query<ChatSessionList>('lobehub', 'sessionsListGrouped', {
+      ...getWorkspaceParams(),
+    });
   };
 
   countSessions = async (params?: {

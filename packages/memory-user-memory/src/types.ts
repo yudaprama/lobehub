@@ -44,10 +44,10 @@ export interface ExtractorOptions extends ExtractorTemplateProps {
   };
   messageIds?: string[];
   /**
-   * S3 key of the parent memory job trace. When provided, propagated into
-   * the per-call `llm_generation_tracing` row as `metadata.parent_memory_trace_key`,
-   * giving offline analysis a backlink from a single generateObject call to the
-   * job-level memory trace that spawned it.
+   * S3 key of the parent memory job trace. When provided, propagated as
+   * `metadata.parent_memory_trace_key` on the OTLP span for the per-call
+   * generateObject, giving offline analysis a backlink from a single
+   * generateObject call to the job-level memory trace that spawned it.
    */
   parentMemoryTraceKey?: string;
   sourceId?: string;

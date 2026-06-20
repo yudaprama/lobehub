@@ -36,13 +36,6 @@ export const apiKeyRouter = router({
       return ctx.apiKeyModel.deleteAll();
     }),
 
-  deleteApiKey: apiKeyProcedure
-    .use(withScopedPermission('api_key:delete'))
-    .input(z.object({ id: z.string() }))
-    .mutation(async ({ input, ctx }) => {
-      return ctx.apiKeyModel.delete(input.id);
-    }),
-
   getApiKey: apiKeyProcedure
     .input(z.object({ apiKey: z.string() }))
     .query(async ({ input, ctx }) => {
@@ -58,23 +51,6 @@ export const apiKeyRouter = router({
   getApiKeys: apiKeyProcedure.query(async ({ ctx }) => {
     return ctx.apiKeyModel.query();
   }),
-
-  updateApiKey: apiKeyProcedure
-    .use(withScopedPermission('api_key:update'))
-    .input(
-      z.object({
-        id: z.string(),
-        value: z.object({
-          description: z.string().optional(),
-          enabled: z.boolean().optional(),
-          expiresAt: z.date().optional().nullable(),
-          name: z.string().optional(),
-        }),
-      }),
-    )
-    .mutation(async ({ input, ctx }) => {
-      return ctx.apiKeyModel.update(input.id, input.value);
-    }),
 
   validateApiKey: apiKeyProcedure
     .input(z.object({ key: z.string() }))

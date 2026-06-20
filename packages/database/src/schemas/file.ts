@@ -1,6 +1,7 @@
 import { isNotNull, sql } from 'drizzle-orm';
 import type { AnyPgColumn } from 'drizzle-orm/pg-core';
 import {
+  bigint,
   boolean,
   index,
   integer,

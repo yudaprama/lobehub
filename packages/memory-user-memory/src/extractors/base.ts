@@ -158,9 +158,9 @@ export abstract class BaseMemoryExtractor<
               span.addEvent('gen_ai.request.send');
               const result = await this.runtime.generateObject(payload, {
                 metadata: {
-                  // Optional backlink to the job-level memory trace blob; the
-                  // llm_generation_tracing hook persists it under metadata so a
-                  // per-call row can be traced back to the job-level dump.
+                  // Optional backlink to the job-level memory trace blob;
+                  // propagated as span metadata so a per-call span can be
+                  // traced back to the job-level dump.
                   ...(options?.parentMemoryTraceKey
                     ? { parent_memory_trace_key: options.parentMemoryTraceKey }
                     : {}),

@@ -1,5 +1,5 @@
 import { TRACING_SCENARIOS } from '@lobechat/const';
-import type { TracingOptions } from '@lobechat/llm-generation-tracing';
+import type { TracingOptions } from '@lobechat/model-runtime';
 import type { FollowUpChip, FollowUpExtractInput, FollowUpExtractResult } from '@lobechat/types';
 import debug from 'debug';
 

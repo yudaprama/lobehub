@@ -80,8 +80,13 @@ interface ImageForGeneration {
 export class GenerationService {
   private fileService: FileService;
 
-  constructor(db: LobeChatDatabase, userId: string, workspaceId?: string) {
-    this.fileService = new FileService(db, userId, workspaceId);
+  constructor(
+    db: LobeChatDatabase,
+    userId: string,
+    workspaceId?: string,
+    kratosSessionToken?: string,
+  ) {
+    this.fileService = new FileService(db, userId, workspaceId, kratosSessionToken);
   }
 
   /**

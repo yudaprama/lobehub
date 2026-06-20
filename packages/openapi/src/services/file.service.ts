@@ -71,12 +71,12 @@ export class FileUploadService extends BaseService {
   // Lazy import ChunkService to avoid circular dependency overhead
   // Note: ChunkService is only available in server-side environments
 
-  constructor(db: LobeChatDatabase, userId: string, workspaceId?: string) {
+  constructor(db: LobeChatDatabase, userId: string, workspaceId?: string, kratosSessionToken?: string) {
     super(db, userId, workspaceId);
     this.fileModel = new FileModel(db, userId, workspaceId);
     this.documentModel = new DocumentModel(db, userId, workspaceId);
     this.coreFileService = new CoreFileService(db, userId!, workspaceId);
-    this.documentService = new DocumentService(db, userId, workspaceId);
+    this.documentService = new DocumentService(db, userId, workspaceId, kratosSessionToken);
     this.s3Service = new FileS3();
     this.chunkModel = new ChunkModel(db, userId, workspaceId);
     this.asyncTaskModel = new AsyncTaskModel(db, userId, workspaceId);

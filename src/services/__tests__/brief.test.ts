@@ -2,14 +2,24 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { briefService } from '../brief';
 
-const mockQuery = vi.fn();
-const mockBriefMutate = vi.fn();
+const { mockPrestDelete, mockPrestUpdate, mockQuery, mockBriefMutate } = vi.hoisted(() => ({
+  mockBriefMutate: vi.fn(),
+  mockPrestDelete: vi.fn().mockResolvedValue([]),
+  mockPrestUpdate: vi.fn().mockResolvedValue([{ id: 'brief-1' }]),
+  mockQuery: vi.fn(),
+}));
+
+vi.mock('@/libs/prest/client', () => ({
+  getLobehubClient: vi.fn().mockResolvedValue({
+    delete: mockPrestDelete,
+    update: mockPrestUpdate,
+  }),
+}));
 
 vi.mock('@/libs/trpc/client', () => ({
   lambdaClient: {
     brief: {
       listUnresolved: { query: (...args: any[]) => mockQuery(...args) },
-      markRead: { mutate: (...args: any[]) => mockBriefMutate(...args) },
       resolve: { mutate: (...args: any[]) => mockBriefMutate(...args) },
     },
   },
@@ -20,6 +30,14 @@ beforeEach(() => {
 });
 
 describe('BriefService', () => {
+  describe('delete', () => {
+    it('should call pREST delete with id', async () => {
+      await briefService.delete('brief-1');
+
+      expect(mockPrestDelete).toHaveBeenCalledWith('briefs', { id: 'brief-1' });
+    });
+  });
+
   describe('listUnresolved', () => {
     it('should call listUnresolved query', async () => {
       const mockData = { data: [{ id: 'brief-1', title: 'Test' }], success: true };
@@ -55,12 +73,15 @@ describe('BriefService', () => {
   });
 
   describe('markRead', () => {
-    it('should call markRead with id', async () => {
-      mockBriefMutate.mockResolvedValueOnce({ data: {}, success: true });
+    it('should call pREST update with read_at timestamp', async () => {
+      const result = await briefService.markRead('brief-1');
 
-      await briefService.markRead('brief-1');
-
-      expect(mockBriefMutate).toHaveBeenCalledWith({ id: 'brief-1' });
+      expect(mockPrestUpdate).toHaveBeenCalledWith(
+        'briefs',
+        { id: 'brief-1' },
+        { read_at: expect.any(String) },
+      );
+      expect(result).toEqual({ id: 'brief-1' });
     });
   });
 });

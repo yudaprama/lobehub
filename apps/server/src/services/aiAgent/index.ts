@@ -303,17 +303,23 @@ export class AiAgentService {
   private readonly composioService: ComposioService;
 
   private readonly workspaceId?: string;
+  private readonly kratosSessionToken?: string;
 
   constructor(
     db: LobeChatDatabase,
     userId: string,
-    options?: { runtimeOptions?: AgentRuntimeServiceOptions; workspaceId?: string },
+    options?: {
+      kratosSessionToken?: string;
+      runtimeOptions?: AgentRuntimeServiceOptions;
+      workspaceId?: string;
+    },
   ) {
     this.userId = userId;
     this.db = db;
     this.workspaceId = options?.workspaceId;
+    this.kratosSessionToken = options?.kratosSessionToken;
     const wsId = this.workspaceId;
-    this.agentDocumentsService = new AgentDocumentsService(db, userId, wsId);
+    this.agentDocumentsService = new AgentDocumentsService(db, userId, wsId, this.kratosSessionToken);
     this.agentModel = new AgentModel(db, userId, wsId);
     this.agentService = new AgentService(db, userId, wsId);
     this.messageModel = new MessageModel(db, userId, wsId);
@@ -338,6 +344,7 @@ export class AiAgentService {
         execVirtualSubAgent: this.execVirtualSubAgent,
         execGroupMember: this.execGroupMember,
       },
+      kratosSessionToken: this.kratosSessionToken,
       workspaceId: wsId,
     });
     this.marketService = new MarketService({ userInfo: { userId } });
@@ -498,8 +505,18 @@ export class AiAgentService {
       videoList = [];
       audioList = [];
       fileList = [];
-      const fileService = new FileService(this.db, this.userId, this.workspaceId);
-      const documentService = new DocumentService(this.db, this.userId, this.workspaceId);
+      const fileService = new FileService(
+        this.db,
+        this.userId,
+        this.workspaceId,
+        this.kratosSessionToken,
+      );
+      const documentService = new DocumentService(
+        this.db,
+        this.userId,
+        this.workspaceId,
+        this.kratosSessionToken,
+      );
 
       for (const file of files) {
         await throwIfAborted('file upload');
@@ -1645,7 +1662,12 @@ export class AiAgentService {
     const { loadModels } = await import('@/business/client/model-bank/loadModels');
     const builtinModels = await loadModels();
     // Resolve file URLs before visual tool activation checks and context build.
-    const fileService = new FileService(this.db, this.userId, this.workspaceId);
+    const fileService = new FileService(
+      this.db,
+      this.userId,
+      this.workspaceId,
+      this.kratosSessionToken,
+    );
     const postProcessUrl = (path: string | null, file: { id?: string | null }) =>
       fileService.getFileAccessUrl({ id: file.id, url: path });
     let historyMessagesCache: any[] | undefined;

@@ -193,6 +193,11 @@ export interface ToolExecutionContext {
    * etc.) land in the same workspace the request originated from.
    */
   workspaceId?: string;
+  /**
+   * Kratos session token for AList file service authentication.
+   * Passed through to FileService for signed URL resolution within tool runtimes.
+   */
+  kratosSessionToken?: string;
 }
 
 export interface ToolExecutionResult {

@@ -59,18 +59,25 @@ export class DocumentService {
   private db: LobeChatDatabase;
 
   private workspaceId?: string;
+  private kratosSessionToken?: string;
 
-  constructor(db: LobeChatDatabase, userId: string, workspaceId?: string) {
+  constructor(db: LobeChatDatabase, userId: string, workspaceId?: string, kratosSessionToken?: string) {
     this.userId = userId;
     this.db = db;
     this.workspaceId = workspaceId;
+    this.kratosSessionToken = kratosSessionToken;
     this.fileModel = new FileModel(db, userId, workspaceId);
     this.documentModel = new DocumentModel(db, userId, workspaceId);
     this.editLockService = new EditLockService(userId);
   }
 
   private get fileService() {
-    this.fileServiceInstance ??= new FileService(this.db, this.userId, this.workspaceId);
+    this.fileServiceInstance ??= new FileService(
+      this.db,
+      this.userId,
+      this.workspaceId,
+      this.kratosSessionToken,
+    );
 
     return this.fileServiceInstance;
   }

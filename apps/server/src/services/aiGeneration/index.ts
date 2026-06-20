@@ -18,16 +18,14 @@ export interface AiGenerationObjectInput {
 
 export interface AiGenerationObjectOptions {
   /**
-   * Free-form context forwarded to non-tracing hooks (billing, routing). Use
-   * `tracing` instead for `llm_generation_tracing` config.
+   * Free-form context forwarded to hooks (billing, routing).
    */
   metadata?: Record<string, unknown>;
   signal?: AbortSignal;
   /**
    * Structured tracing config (scenario / promptVersion / schemaName /
-   * agentId / topicId / inputHint / ...). Forwarded to the
-   * `llm_generation_tracing` hook. Strongly typed by `TracingOptions` from
-   * `@lobechat/llm-generation-tracing` at call sites.
+   * agentId / topicId / inputHint / ...). Forwarded to runtime hooks.
+   * Strongly typed as `TracingOptions` from `@lobechat/model-runtime`.
    */
   tracing?: Record<string, unknown>;
 }

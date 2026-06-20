@@ -7,7 +7,6 @@ import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import {
-  useVerifierTracing,
   useVerifyInstruction,
   useVerifyResults,
   useVerifyState,
@@ -109,7 +108,6 @@ const Body = () => {
 
   const item = (state?.verifyPlan ?? []).find((i) => i.id === checkItemId);
   const result = (results ?? []).find((r) => r.checkItemId === checkItemId);
-  const { data: tracing } = useVerifierTracing(result?.verifierTracingId);
   // The criterion's original judging rule, so the panel shows what was checked,
   // not only the judgment outcome.
   const { data: instructionDoc } = useVerifyInstruction(item?.documentId);
@@ -121,10 +119,6 @@ const Body = () => {
   const ratio = typeof result?.confidence === 'number' ? result.confidence : undefined;
   const duration = formatDuration(result?.startedAt, result?.completedAt);
   const instruction = instructionDoc?.content;
-  const tokens =
-    tracing && (tracing.inputTokens != null || tracing.outputTokens != null)
-      ? (tracing.inputTokens ?? 0) + (tracing.outputTokens ?? 0)
-      : undefined;
 
   const metaItems: { key: string; value: string }[] = [
     { key: t('detail.method'), value: t(methodKey(item.verifierType) as any) },
@@ -133,11 +127,6 @@ const Body = () => {
       value: new Date(result.completedAt).toLocaleString(),
     },
     duration && { key: t('detail.duration'), value: duration },
-    tracing?.model && {
-      key: t('detail.model'),
-      value: tracing.provider ? `${tracing.provider} / ${tracing.model}` : tracing.model,
-    },
-    tokens != null && { key: t('detail.tokens'), value: tokens.toLocaleString() },
   ].filter(Boolean) as { key: string; value: string }[];
 
   const sections: { key: string; value?: string | null }[] = [

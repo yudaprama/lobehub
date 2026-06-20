@@ -49,9 +49,10 @@ export class WebBrowsingDocumentService {
   private readonly workspaceId?: string;
   private readonly documentModel: DocumentModel;
   private readonly topicDocumentModel: TopicDocumentModel;
+  private readonly kratosSessionToken?: string;
   private documentServiceInstance?: DocumentService;
 
-  constructor(db: LobeChatDatabase, userId: string, workspaceId?: string) {
+  constructor(db: LobeChatDatabase, userId: string, workspaceId?: string, kratosSessionToken?: string) {
     this.db = db;
     this.userId = userId;
     this.workspaceId = workspaceId;
@@ -60,7 +61,12 @@ export class WebBrowsingDocumentService {
   }
 
   private get documentService() {
-    this.documentServiceInstance ??= new DocumentService(this.db, this.userId, this.workspaceId);
+    this.documentServiceInstance ??= new DocumentService(
+      this.db,
+      this.userId,
+      this.workspaceId,
+      this.kratosSessionToken,
+    );
     return this.documentServiceInstance;
   }
 

@@ -1,5 +1,5 @@
 import { INBOX_SESSION_ID } from '@/const/session';
-import { getPrestClient } from '@/libs/prest/client';
+import { getPrestClient, getWorkspaceParams } from '@/libs/prest/client';
 import { lambdaClient } from '@/libs/trpc/client';
 import { type BatchTaskResult } from '@/types/service';
 import {
@@ -162,6 +162,7 @@ export class TopicService {
 
       const rows = await client.query<TopicRow & { rank: number }>('lobehub', 'topicsSearchFts', {
         q: trimmed,
+        ...getWorkspaceParams(),
         ...(agentId ? { agentId } : {}),
       });
       return rows as unknown as ChatTopic[];

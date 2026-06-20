@@ -82,7 +82,7 @@ const hasMemberSettingChange = (input: Partial<UserSettings>) =>
 const userProcedure = authedProcedure.use(serverDatabase).use(async ({ ctx, next }) => {
   return next({
     ctx: {
-      fileService: new FileService(ctx.serverDB, ctx.userId),
+      fileService: new FileService(ctx.serverDB, ctx.userId, undefined, ctx.kratosSessionToken),
       // workspace-audit: intentionally personal-scoped (no workspaceId). These models
       // only feed `getUserState`'s user-lifetime onboarding gates (hasConversation /
       // canEnablePWAGuide / canEnableTrace), which are per-user, not per-workspace.

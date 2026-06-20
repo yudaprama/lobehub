@@ -90,11 +90,18 @@ export class KnowledgeBaseSearchService {
   private documentServiceInstance?: DocumentService;
 
   private workspaceId?: string;
+  private kratosSessionToken?: string;
 
-  constructor(serverDB: LobeChatDatabase, userId: string, workspaceId?: string) {
+  constructor(
+    serverDB: LobeChatDatabase,
+    userId: string,
+    workspaceId?: string,
+    kratosSessionToken?: string,
+  ) {
     this.serverDB = serverDB;
     this.userId = userId;
     this.workspaceId = workspaceId;
+    this.kratosSessionToken = kratosSessionToken;
     this.chunkModel = new ChunkModel(serverDB, userId, workspaceId);
     this.documentModel = new DocumentModel(serverDB, userId, workspaceId);
     this.fileModel = new FileModel(serverDB, userId, workspaceId);
@@ -106,6 +113,7 @@ export class KnowledgeBaseSearchService {
       this.serverDB,
       this.userId,
       this.workspaceId,
+      this.kratosSessionToken,
     );
     return this.documentServiceInstance;
   }

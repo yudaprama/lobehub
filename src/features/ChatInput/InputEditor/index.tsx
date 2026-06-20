@@ -205,11 +205,6 @@ const InputEditor = memo<{
     });
   }, [storeApi]);
 
-  // Map each in-flight suggestion to its tracing row so the Tab/Esc/typing
-  // callbacks below can report `recordFeedback` against the correct id.
-  // Keyed by editor-provided `suggestionId`; entries are dropped on
-  // accept/reject (the plugin guarantees one of those eventually fires).
-  const tracingIdBySuggestionRef = useRef<Map<string, string>>(new Map());
 
   const handleAutoComplete = useCallback(
     async ({
@@ -245,9 +240,9 @@ const InputEditor = memo<{
 
       const currentTopicId = useChatStore.getState().activeTopicId;
 
-      let envelope: { data?: { completion?: string } | null; tracingId?: string } | null;
+      let response: { data?: { completion?: string } | null } | null;
       try {
-        envelope = (await aiChatService.generateJSON(
+        response = (await aiChatService.generateJSON(
           {
             messages,
             model: config.model,
@@ -266,7 +261,7 @@ const InputEditor = memo<{
             },
           },
           abortController,
-        )) as { data?: { completion?: string } | null; tracingId?: string } | null;
+        )) as { data?: { completion?: string } | null } | null;
       } catch (error) {
         if (!isInputCompletionAbortError(error)) {
           storeApi.getState().pauseInputCompletion(createInputCompletionError(error));
@@ -280,12 +275,9 @@ const InputEditor = memo<{
       // Keep the breaker active and drop this stale suggestion in that race.
       if (storeApi.getState().inputCompletionError) return null;
 
-      const completion = envelope?.data?.completion?.trimEnd();
+      const completion = response?.data?.completion?.trimEnd();
       if (!completion) return null;
 
-      if (suggestionId && envelope?.tracingId) {
-        tracingIdBySuggestionRef.current.set(suggestionId, envelope.tracingId);
-      }
       return completion;
     },
     [isComposingRef, storeApi, agentId],
@@ -301,19 +293,7 @@ const InputEditor = memo<{
       suggestionId: string;
       visibleMs: number;
     }) => {
-      const tracingId = tracingIdBySuggestionRef.current.get(suggestionId);
-      if (!tracingId) return;
-      tracingIdBySuggestionRef.current.delete(suggestionId);
-      aiChatService
-        .recordTracingFeedback({
-          data: { acceptedText, visibleMs },
-          signal: 'positive',
-          source: 'autocomplete_tab',
-          tracingId,
-        })
-        .catch((err) => {
-          console.warn('[InputCompletion] recordFeedback (accepted) failed', err);
-        });
+      // legacy tracing feedback removed
     },
     [],
   );
@@ -328,29 +308,9 @@ const InputEditor = memo<{
       suggestionId: string;
       visibleMs: number;
     }) => {
-      const tracingId = tracingIdBySuggestionRef.current.get(suggestionId);
-      if (!tracingId) return;
-      tracingIdBySuggestionRef.current.delete(suggestionId);
-      // IME composition starts by dispatching KEY_ESCAPE_COMMAND from this
-      // component (see onCompositionStart below); that arrives here with
-      // reason='esc' but it isn't a real reject — recode as neutral so the
-      // signal isn't poisoned for CJK input users.
-      const isImeClear = reason === 'esc' && isComposingRef.current;
-      const signal: 'positive' | 'negative' | 'neutral' =
-        !isImeClear && reason === 'esc' ? 'negative' : 'neutral';
-      const source = isImeClear ? 'autocomplete_ime' : `autocomplete_${reason}`;
-      aiChatService
-        .recordTracingFeedback({
-          data: { reason, visibleMs },
-          signal,
-          source,
-          tracingId,
-        })
-        .catch((err) => {
-          console.warn('[InputCompletion] recordFeedback (rejected) failed', err);
-        });
+      // legacy tracing feedback removed
     },
-    [isComposingRef],
+    [],
   );
 
   const autoCompletePlugin = useMemo(

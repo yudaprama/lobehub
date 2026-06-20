@@ -70,3 +70,4 @@ export async function getLobehubClient() {
 }
 
 export { PrestApiError, PrestClient, tsquery, TypedPrestClient } from 'prest-js-sdk';
+export { getWorkspaceParams } from './workspaceScope';

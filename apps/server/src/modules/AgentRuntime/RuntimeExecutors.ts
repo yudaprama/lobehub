@@ -321,12 +321,12 @@ const archiveRuntimeToolResult = async (
 // tests) don't fail at context-build time; failure returns undefined, which
 // leaves URLs as raw keys — same behavior as before this helper existed.
 const buildPostProcessUrl = (
-  ctx: Pick<RuntimeExecutorContext, 'serverDB' | 'userId' | 'workspaceId'>,
+  ctx: Pick<RuntimeExecutorContext, 'serverDB' | 'userId' | 'workspaceId' | 'kratosSessionToken'>,
 ) => {
   if (!ctx.userId || !ctx.serverDB) return undefined;
   let fileService: FileService | undefined;
   try {
-    fileService = new FileService(ctx.serverDB, ctx.userId, ctx.workspaceId);
+    fileService = new FileService(ctx.serverDB, ctx.userId, ctx.workspaceId, ctx.kratosSessionToken);
   } catch {
     return undefined;
   }
@@ -723,6 +723,11 @@ export interface RuntimeExecutorContext {
    * `ToolExecutionContext.workspaceId`.
    */
   workspaceId?: string;
+  /**
+   * Kratos session token for AList file service authentication.
+   * Passed through to FileService for signed URL resolution.
+   */
+  kratosSessionToken?: string;
 }
 
 export const createRuntimeExecutors = (
@@ -1477,7 +1482,9 @@ export const createRuntimeExecutors = (
       // satisfies its optional type — it is always present in this executor.
       // A missing-S3-config failure surfaces later at uploadBase64 (caught per
       // image in uploadPartImage), never at construction.
-      const imageUploadService = ctx.userId ? new FileService(ctx.serverDB, ctx.userId) : undefined;
+      const imageUploadService = ctx.userId
+        ? new FileService(ctx.serverDB, ctx.userId, ctx.workspaceId, ctx.kratosSessionToken)
+        : undefined;
       const imageUploadDate = new Date().toISOString().split('T')[0];
 
       // Coalesce a streamed text chunk into the trailing text part (mirrors the

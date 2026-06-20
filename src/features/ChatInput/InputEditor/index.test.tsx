@@ -34,7 +34,6 @@ const mocks = vi.hoisted(() => {
       model: 'gpt-4o-mini',
       provider: 'openai',
     },
-    recordTracingFeedback: vi.fn(),
   };
 });
 
@@ -141,7 +140,6 @@ vi.mock('@/services/chat', () => ({ chatService: { fetchPresetTaskResult: vi.fn(
 vi.mock('@/services/aiChat', () => ({
   aiChatService: {
     generateJSON: mocks.generateJSON,
-    recordTracingFeedback: mocks.recordTracingFeedback,
   },
 }));
 vi.mock('@/store/chat', () => ({

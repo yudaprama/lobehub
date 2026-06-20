@@ -1,10 +1,10 @@
 /**
- * Canonical directory of every `llm_generation_tracing` scenario value.
+ * Canonical directory of every tracing scenario value.
  *
  * Add to this map whenever a new caller pipes through the tracing path so
  * there's one place to scan for all known scenarios. Values are the literal
- * strings persisted on the row's `scenario` column — keep them stable, they
- * are dashboard / partition keys.
+ * strings emitted as OTLP span attributes — keep them stable, they are
+ * dashboard / partition keys.
  */
 export const TRACING_SCENARIOS = {
   AgentSignal: 'agent_signal',

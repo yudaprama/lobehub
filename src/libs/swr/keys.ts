@@ -601,7 +601,6 @@ export const verifyKeys = {
   results: def('verify:results', (operationId: string) => ['verify:results', operationId]),
   rubric: def('verify:rubric', (rubricId: string) => ['verify:rubric', rubricId]),
   state: def('verify:state', (operationId: string) => ['verify:state', operationId]),
-  tracing: def('verify:tracing', (tracingId: string) => ['verify:tracing', tracingId]),
 };
 
 // ---- inbox / notifications ----------------------------------------------

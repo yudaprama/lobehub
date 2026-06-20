@@ -141,9 +141,14 @@ export class AgentDocumentsService {
   private documentService: DocumentService;
   private topicDocumentModel: TopicDocumentModel;
 
-  constructor(db: LobeChatDatabase, userId: string, workspaceId?: string) {
+  constructor(
+    db: LobeChatDatabase,
+    userId: string,
+    workspaceId?: string,
+    kratosSessionToken?: string,
+  ) {
     this.agentDocumentModel = new AgentDocumentModel(db, userId, workspaceId);
-    this.documentService = new DocumentService(db, userId, workspaceId);
+    this.documentService = new DocumentService(db, userId, workspaceId, kratosSessionToken);
     this.topicDocumentModel = new TopicDocumentModel(db, userId, workspaceId);
   }
 

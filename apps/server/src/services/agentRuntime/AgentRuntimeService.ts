@@ -224,6 +224,11 @@ export interface AgentRuntimeServiceOptions {
    * Falls back to user-personal scope when omitted.
    */
   workspaceId?: string;
+  /**
+   * Kratos session token for AList file service authentication.
+   * Passed through to FileService/MessageService for direct AList uploads.
+   */
+  kratosSessionToken?: string;
 }
 
 /**
@@ -260,6 +265,7 @@ export class AgentRuntimeService {
   private serverDB: LobeChatDatabase;
   private userId: string;
   private workspaceId?: string;
+  private kratosSessionToken?: string;
   private messageModel: MessageModel;
   // Lazily constructed because MessageService instantiates a FileService
   // which eagerly creates the S3 client and throws when S3 env vars are
@@ -272,6 +278,7 @@ export class AgentRuntimeService {
         this.serverDB,
         this.userId,
         this.workspaceId,
+        this.kratosSessionToken,
       );
     }
     return this.messageServiceInstance;
@@ -301,6 +308,7 @@ export class AgentRuntimeService {
     this.serverDB = db;
     this.userId = userId;
     this.workspaceId = options?.workspaceId;
+    this.kratosSessionToken = options?.kratosSessionToken;
     const workspaceId = this.workspaceId;
     this.messageModel = new MessageModel(db, this.userId, workspaceId);
     this.completionLifecycle = new CompletionLifecycle(db, userId, workspaceId);
@@ -2255,7 +2263,7 @@ export class AgentRuntimeService {
   private async refreshMessagesFromDB(state: AgentState): Promise<AgentState['messages']> {
     let postProcessUrl: ((path: string | null) => Promise<string>) | undefined;
     try {
-      const fileService = new FileService(this.serverDB, this.userId);
+      const fileService = new FileService(this.serverDB, this.userId, undefined, this.kratosSessionToken);
       postProcessUrl = (path: string | null) => fileService.getFullFileUrl(path);
     } catch {
       postProcessUrl = undefined;
@@ -2394,6 +2402,7 @@ export class AgentRuntimeService {
       tracingContextEngine,
       userId: metadata?.userId,
       workspaceId: this.workspaceId,
+      kratosSessionToken: this.kratosSessionToken,
     };
 
     // Create Agent Runtime instance

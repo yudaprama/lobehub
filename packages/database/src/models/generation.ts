@@ -29,12 +29,12 @@ export class GenerationModel {
   private fileModel: FileModel;
   private fileService: FileService;
 
-  constructor(db: LobeChatDatabase, userId: string, workspaceId?: string) {
+  constructor(db: LobeChatDatabase, userId: string, workspaceId?: string, kratosSessionToken?: string) {
     this.db = db;
     this.userId = userId;
     this.workspaceId = workspaceId;
     this.fileModel = new FileModel(db, userId, workspaceId);
-    this.fileService = new FileService(db, userId);
+    this.fileService = new FileService(db, userId, undefined, kratosSessionToken);
   }
 
   private ownership = () =>

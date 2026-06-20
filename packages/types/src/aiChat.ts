@@ -195,8 +195,7 @@ export const StructureSchema = z.object({
 
 export const StructureOutputSchema = z.object({
   /**
-   * Free-form context forwarded to non-tracing hooks (e.g. billing). Use
-   * `tracing` for `llm_generation_tracing` config.
+   * Free-form context forwarded to hooks (e.g. billing).
    */
   metadata: z.record(z.string(), z.unknown()).optional(),
   messages: z.array(z.any()),
@@ -209,13 +208,11 @@ export const StructureOutputSchema = z.object({
   /**
    * Structured tracing config (scenario / promptVersion / schemaName /
    * agentId / topicId / inputHint / ...). See `TracingOptions` from
-   * `@lobechat/llm-generation-tracing` for the typed shape.
+   * `@lobechat/model-runtime` for the typed shape.
    *
-   * `tracingId` is validated as UUID here because the value is reused as the
-   * `llm_generation_tracing.id` primary key (uuid column) and is also accepted
-   * back through `llmGenerationTracing.recordFeedback` (`z.string().uuid()`).
-   * Letting a malformed value through would echo a tracingId the client can't
-   * use for the feedback flow. Other fields stay free-form via `catchall`.
+   * `tracingId` is validated as UUID here because the value is returned
+   * to the client as a correlation handle for future OTLP span lookups.
+   * Other fields stay free-form via `catchall`.
    */
   tracing: z.object({ tracingId: z.string().uuid().optional() }).catchall(z.unknown()).optional(),
 });
@@ -235,8 +232,7 @@ interface IStructureSchema {
 export interface StructureOutputParams {
   messages: OpenAIChatMessage[];
   /**
-   * Free-form context forwarded to non-tracing hooks (e.g. billing). Use
-   * `tracing` for `llm_generation_tracing` config.
+   * Free-form context forwarded to hooks (e.g. billing).
    */
   metadata?: Record<string, unknown>;
   model: string;
@@ -250,7 +246,7 @@ export interface StructureOutputParams {
   /**
    * Structured tracing config (scenario / promptVersion / schemaName /
    * agentId / topicId / inputHint / ...). See `TracingOptions` from
-   * `@lobechat/llm-generation-tracing` for the typed shape.
+   * `@lobechat/model-runtime` for the typed shape.
    */
   tracing?: Record<string, unknown>;
 }

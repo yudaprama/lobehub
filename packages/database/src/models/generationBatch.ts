@@ -29,11 +29,11 @@ export class GenerationBatchModel {
   private fileService: FileService;
   private generationModel: GenerationModel;
 
-  constructor(db: LobeChatDatabase, userId: string, workspaceId?: string) {
+  constructor(db: LobeChatDatabase, userId: string, workspaceId?: string, kratosSessionToken?: string) {
     this.db = db;
     this.userId = userId;
     this.workspaceId = workspaceId;
-    this.fileService = new FileService(db, userId);
+    this.fileService = new FileService(db, userId, undefined, kratosSessionToken);
     this.generationModel = new GenerationModel(db, userId, workspaceId);
   }
 

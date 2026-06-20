@@ -15,12 +15,6 @@ export const useVerifyResults = (operationId: string | null) =>
     verifyService.listResults(operationId!),
   );
 
-/** Model / token / latency for an LLM verifier judgment. Pass null to skip. */
-export const useVerifierTracing = (tracingId: string | null | undefined) =>
-  useClientDataSWR(tracingId ? verifyKeys.tracing(tracingId) : null, () =>
-    verifyService.getVerifierTracing(tracingId!),
-  );
-
 /** The criterion's original judging rule, stored in its instruction document. */
 export const useVerifyInstruction = (documentId: string | null | undefined) =>
   useClientDataSWR(documentId ? verifyKeys.instruction(documentId) : null, () =>

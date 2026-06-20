@@ -65,7 +65,7 @@ const skillProcedure = wsCompatProcedure.use(serverDatabase).use(async (opts) =>
   return opts.next({
     ctx: {
       fileModel: new FileModel(ctx.serverDB, ctx.userId, workspaceId),
-      fileService: new FileService(ctx.serverDB, ctx.userId, workspaceId),
+      fileService: new FileService(ctx.serverDB, ctx.userId, workspaceId, ctx.kratosSessionToken),
       marketService: new MarketService({ userInfo: { userId: ctx.userId } }),
       skillImporter: new SkillImporter(ctx.serverDB, ctx.userId, workspaceId),
       skillModel,

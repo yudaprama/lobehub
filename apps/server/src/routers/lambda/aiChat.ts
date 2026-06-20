@@ -108,7 +108,7 @@ const aiChatProcedure = wsCompatProcedure.use(serverDatabase).use(async (opts) =
       agentModel: new AgentModel(ctx.serverDB, ctx.userId, wsId),
       aiChatService: new AiChatService(ctx.serverDB, ctx.userId, wsId),
       aiGenerationService: new AiGenerationService(ctx.serverDB, ctx.userId, wsId),
-      fileService: new FileService(ctx.serverDB, ctx.userId, wsId),
+      fileService: new FileService(ctx.serverDB, ctx.userId, wsId, ctx.kratosSessionToken),
       messageModel: new MessageModel(ctx.serverDB, ctx.userId, wsId),
       threadModel: new ThreadModel(ctx.serverDB, ctx.userId, wsId),
       topicModel: new TopicModel(ctx.serverDB, ctx.userId, wsId),
@@ -124,17 +124,16 @@ export const aiChatRouter = router({
     log('messages count: %d', input.messages.length);
     log('schema: %O', input.schema);
 
-    // Pre-allocate the tracing row id so we can return it to the client even
-    // though the actual `service.record()` call happens in Next's `after()`
-    // (after the response has been sent). Honour the caller-supplied id when
-    // one was passed via `tracing.tracingId` — the schema already validates
-    // it as UUID, so a malformed value never reaches here.
+    // Pre-allocate a tracing id (UUID) so we can return it to the client for
+    // future OTLP span correlation. Honour the caller-supplied id when one
+    // was passed via `tracing.tracingId` — the schema already validates it
+    // as UUID, so a malformed value never reaches here.
     const tracingId = input.tracing?.tracingId ?? randomUUID();
 
     // Always stamp a trigger on metadata so cross-cutting hooks (timing,
-    // routing) and the tracing registry have a fallback when the caller
-    // forgets to set one. `tracing` carries the structured tracing config
-    // (scenario / promptVersion / schemaName / inputHint / ...).
+    // routing) have a fallback when the caller forgets to set one. `tracing`
+    // carries the structured tracing config (scenario / promptVersion /
+    // schemaName / inputHint / ...) consumed by runtime hooks.
     let data: unknown;
     try {
       data = await ctx.aiGenerationService.generateObject(

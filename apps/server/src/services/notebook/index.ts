@@ -22,6 +22,7 @@ export interface NotebookRuntimeServiceOptions {
   serverDB: LobeChatDatabase;
   userId: string;
   workspaceId?: string;
+  kratosSessionToken?: string;
 }
 
 const toServiceResult = (doc: {
@@ -58,6 +59,7 @@ export class NotebookRuntimeService {
       options.serverDB,
       options.userId,
       options.workspaceId,
+      options.kratosSessionToken,
     );
     this.documentModel = new DocumentModel(options.serverDB, options.userId, options.workspaceId);
     this.topicDocumentModel = new TopicDocumentModel(

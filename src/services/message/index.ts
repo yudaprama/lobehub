@@ -15,7 +15,7 @@ import {
 } from '@lobechat/types';
 import { type HeatmapsProps } from '@lobehub/charts';
 
-import { getPrestClient } from '@/libs/prest/client';
+import { getPrestClient, getWorkspaceParams } from '@/libs/prest/client';
 import { lambdaClient } from '@/libs/trpc/client';
 
 import { abortableRequest } from '../utils/abortableRequest';
@@ -54,6 +54,7 @@ export class MessageService {
     // groupAssistantMessages narrow path.
     const rows = await client.query<UIChatMessage>('lobehub', 'messagesListByTopic', {
       topicId: params.topicId,
+      ...getWorkspaceParams(),
       ...(params.groupId ? { groupId: params.groupId } : {}),
     });
     return rows as unknown as UIChatMessage[];

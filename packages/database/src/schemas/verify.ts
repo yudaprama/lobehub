@@ -23,7 +23,6 @@ import {
 import { createdAt, timestamps, timestamptz } from './_helpers';
 import { agentOperations } from './agentOperations';
 import { documents } from './file';
-import { llmGenerationTracing } from './llmGenerationTracing';
 import { users } from './user';
 import { workspaces } from './workspace';
 
@@ -195,10 +194,8 @@ export const verifyCheckResults = pgTable(
     verifierOperationId: text('verifier_operation_id').references(() => agentOperations.id, {
       onDelete: 'set null',
     }),
-    /** LLM verifier → tracing row. N:1 — a batch generateObject shares one tracing id. */
-    verifierTracingId: uuid('verifier_tracing_id').references(() => llmGenerationTracing.id, {
-      onDelete: 'set null',
-    }),
+    /** LLM verifier → Tempo span ID (opaque string; no FK). */
+    verifierTracingId: text('verifier_tracing_id'),
 
     status: text('status', { enum: verifyCheckResultStatuses }).default('pending').notNull(),
 

@@ -2,6 +2,8 @@ import type { CheckpointConfig, TaskAutomationMode, TaskStatus } from '@lobechat
 
 import { lambdaClient } from '@/libs/trpc/client';
 
+import { briefService } from './brief';
+
 class TaskService {
   // ── Queries ──
 
@@ -157,9 +159,9 @@ class TaskService {
   // ── Brief operations ──
 
   resolveBrief = async (id: string, opts?: { action?: string; comment?: string }) =>
-    lambdaClient.brief.resolve.mutate({ id, ...opts });
+    briefService.resolve(id, opts);
 
-  markBriefRead = async (id: string) => lambdaClient.brief.markRead.mutate({ id });
+  markBriefRead = async (id: string) => briefService.markRead(id);
 
   // ── Transfer / Copy ──
 

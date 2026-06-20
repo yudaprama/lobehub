@@ -37,7 +37,7 @@ const imageProcedure = wsCompatProcedure.use(serverDatabase).use(async (opts) =>
   return opts.next({
     ctx: {
       asyncTaskModel: new AsyncTaskModel(ctx.serverDB, ctx.userId, wsId),
-      fileService: new FileService(ctx.serverDB, ctx.userId, wsId),
+      fileService: new FileService(ctx.serverDB, ctx.userId, wsId, ctx.kratosSessionToken),
     },
   });
 });

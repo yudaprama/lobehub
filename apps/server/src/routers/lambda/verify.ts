@@ -2,7 +2,6 @@ import { z } from 'zod';
 
 import { wsCompatProcedure } from '@/business/server/trpc-middlewares/workspaceAuth';
 import { AgentOperationModel } from '@/database/models/agentOperation';
-import { LlmGenerationTracingModel } from '@/database/models/llmGenerationTracing';
 import { VerifyCheckResultModel } from '@/database/models/verifyCheckResult';
 import { VerifyCriterionModel } from '@/database/models/verifyCriterion';
 import { VerifyRubricModel } from '@/database/models/verifyRubric';
@@ -43,7 +42,6 @@ const verifyProcedure = wsCompatProcedure.use(serverDatabase).use(async (opts) =
     ctx: {
       criterionModel: new VerifyCriterionModel(ctx.serverDB, ctx.userId, workspaceId),
       executorService: new VerifyExecutorService(ctx.serverDB, ctx.userId, workspaceId),
-      tracingModel: new LlmGenerationTracingModel(ctx.serverDB, ctx.userId, workspaceId),
       feedbackService: new VerifyFeedbackService(ctx.serverDB, ctx.userId, workspaceId),
       operationModel: new AgentOperationModel(ctx.serverDB, ctx.userId, workspaceId),
       planGenerator: new VerifyPlanGeneratorService(ctx.serverDB, ctx.userId, workspaceId),
@@ -168,22 +166,6 @@ export const verifyRouter = router({
       const op = await ctx.operationModel.findById(input.operationId);
       if (!op) return null;
       return { threadId: op.threadId ?? null, topicId: op.topicId ?? null };
-    }),
-
-  getVerifierTracing: verifyProcedure
-    .input(z.object({ tracingId: z.string() }))
-    .query(async ({ ctx, input }) => {
-      // The model / token / latency of an LLM verifier's judgment, surfaced in
-      // the result detail panel.
-      const row = await ctx.tracingModel.findById(input.tracingId);
-      if (!row) return null;
-      return {
-        inputTokens: row.inputTokens ?? null,
-        latencyMs: row.latencyMs ?? null,
-        model: row.model ?? null,
-        outputTokens: row.outputTokens ?? null,
-        provider: row.provider ?? null,
-      };
     }),
 
   getVerifyState: verifyProcedure

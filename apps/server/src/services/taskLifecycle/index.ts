@@ -1,5 +1,5 @@
 import { TRACING_SCENARIOS } from '@lobechat/const';
-import type { TracingOptions } from '@lobechat/llm-generation-tracing';
+import type { TracingOptions } from '@lobechat/model-runtime';
 import {
   chainGenerateBrief,
   chainJudgeBriefEmit,

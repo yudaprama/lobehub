@@ -27,6 +27,7 @@ interface ResolveArgs {
   fileIds: string[];
   userId: string;
   workspaceId?: string;
+  kratosSessionToken?: string;
 }
 
 const dedupe = (ids: string[]) => Array.from(new Set(ids));
@@ -57,14 +58,14 @@ export const resolveAttachmentsByFileIds = async ({
 
   const dedupedFileIds = dedupe(fileIds);
   const fileModel = new FileModel(db, userId, workspaceId);
-  const fileService = new FileService(db, userId, workspaceId);
+  const fileService = new FileService(db, userId, workspaceId, kratosSessionToken);
   const fileRecords = await fileModel.findByIds(dedupedFileIds);
   if (fileRecords.length === 0) {
     log('no file records found for fileIds=%O', dedupedFileIds);
     return result;
   }
 
-  const documentService = new DocumentService(db, userId, workspaceId);
+  const documentService = new DocumentService(db, userId, workspaceId, kratosSessionToken);
   const recordById = new Map(fileRecords.map((f) => [f.id, f]));
 
   // Resolve every file in parallel — URL signing + PDF parsing can both be
@@ -170,7 +171,7 @@ export const resolveAttachmentMetadata = async ({
     return [];
   }
 
-  const fileService = signUrls ? new FileService(db, userId, workspaceId) : null;
+  const fileService = signUrls ? new FileService(db, userId, workspaceId, kratosSessionToken) : null;
   const recordById = new Map(fileRecords.map((f) => [f.id, f]));
   const items = await Promise.all(
     dedupedFileIds.map(async (id) => {

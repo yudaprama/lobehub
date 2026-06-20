@@ -66,7 +66,7 @@ const agentEvalProcedure = wsCompatProcedure.use(serverDatabase).use(async (opts
       runService: new AgentEvalRunService(ctx.serverDB, ctx.userId, wsId),
       runTopicModel: new AgentEvalRunTopicModel(ctx.serverDB, ctx.userId, wsId),
       testCaseModel: new AgentEvalTestCaseModel(ctx.serverDB, ctx.userId, wsId),
-      fileService: new FileService(ctx.serverDB, ctx.userId, wsId),
+      fileService: new FileService(ctx.serverDB, ctx.userId, wsId, ctx.kratosSessionToken),
     },
   });
 });

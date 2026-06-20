@@ -30,11 +30,16 @@ export class SkillImporter {
   private github: GitHub;
   private userId: string;
 
-  constructor(db: LobeChatDatabase, userId: string, workspaceId?: string) {
+  constructor(
+    db: LobeChatDatabase,
+    userId: string,
+    workspaceId?: string,
+    kratosSessionToken?: string,
+  ) {
     this.skillModel = new AgentSkillModel(db, userId, workspaceId);
     this.parser = new SkillParser();
-    this.resourceService = new SkillResourceService(db, userId, workspaceId);
-    this.fileService = new FileService(db, userId, workspaceId);
+    this.resourceService = new SkillResourceService(db, userId, workspaceId, kratosSessionToken);
+    this.fileService = new FileService(db, userId, workspaceId, kratosSessionToken);
     this.github = new GitHub({ userAgent: 'LobeHub-Skill-Importer' });
     this.userId = userId;
   }

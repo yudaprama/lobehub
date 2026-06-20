@@ -19,11 +19,11 @@ export class GenerationTopicModel {
   private workspaceId?: string;
   private fileService: FileService;
 
-  constructor(db: LobeChatDatabase, userId: string, workspaceId?: string) {
+  constructor(db: LobeChatDatabase, userId: string, workspaceId?: string, kratosSessionToken?: string) {
     this.userId = userId;
     this.db = db;
     this.workspaceId = workspaceId;
-    this.fileService = new FileService(db, userId);
+    this.fileService = new FileService(db, userId, undefined, kratosSessionToken);
   }
 
   private ownership = () =>

@@ -1,7 +1,7 @@
 import { type CreateMessageParams } from '@lobechat/types';
 
 import { INBOX_SESSION_ID } from '@/const/session';
-import { getPrestClient } from '@/libs/prest/client';
+import { getPrestClient, getWorkspaceParams } from '@/libs/prest/client';
 import { lambdaClient } from '@/libs/trpc/client';
 import { type CreateThreadParams, type ThreadItem } from '@/types/topic';
 
@@ -14,7 +14,10 @@ export class ThreadService {
     const client = await getPrestClient();
 
     // Tier 2 stored SQL template handles userId scoping + message subqueries.
-    return client.query<ThreadItem>('lobehub', 'threadMessages', { topicId });
+    return client.query<ThreadItem>('lobehub', 'threadMessages', {
+      topicId,
+      ...getWorkspaceParams(),
+    });
   };
 
   createThreadWithMessage = async ({
