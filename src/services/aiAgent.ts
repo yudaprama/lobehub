@@ -128,12 +128,74 @@ class AiAgentService {
   /**
    * Execute a single Agent task.
    * Returns the operationId needed to connect to the Agent Gateway.
+   *
+   * When NEXT_PUBLIC_AGENT_URL is set, calls the Go backend (egent-lobehub)
+   * directly. Falls back to Node.js tRPC when Go is unavailable or fails.
    */
   async execAgentTask(
     params: ExecAgentTaskParams,
     options?: { signal?: AbortSignal },
   ): Promise<ExecAgentResult> {
+    // Try Go backend first when configured.
+    const agentUrl =
+      (typeof window !== 'undefined' && (window as any).__NEXT_PUBLIC_AGENT_URL__) ||
+      (typeof process !== 'undefined' && process.env?.NEXT_PUBLIC_AGENT_URL);
+
+    if (agentUrl) {
+      try {
+        return await this.execAgentViaGoSync(params, options);
+      } catch (goErr) {
+        console.warn('[AiAgentService] Go backend failed, falling back to tRPC:', goErr);
+      }
+    }
+
     return await lambdaClient.aiAgent.execAgent.mutate(params, options);
+  }
+
+  /**
+   * Non-streaming call to the Go backend. Returns ExecAgentResult so the
+   * FE can connect to the Agent Gateway WebSocket for streaming as usual.
+   */
+  private async execAgentViaGoSync(
+    params: ExecAgentTaskParams,
+    options?: { signal?: AbortSignal },
+  ): Promise<ExecAgentResult> {
+    const agentUrl =
+      (typeof window !== 'undefined' && (window as any).__NEXT_PUBLIC_AGENT_URL__) ||
+      (typeof process !== 'undefined' && process.env?.NEXT_PUBLIC_AGENT_URL) ||
+      'http://localhost:10531';
+
+    const res = await fetch(`${agentUrl}/v1/agent/exec`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        agentId: params.agentId,
+        prompt: params.prompt,
+        stream: false,
+        ...(params.appContext?.topicId && { topicId: params.appContext.topicId }),
+        ...(params.appContext?.sessionId && { sessionId: params.appContext.sessionId }),
+      }),
+      signal: options?.signal,
+    });
+
+    if (!res.ok) {
+      throw new Error(`Go agent exec failed: ${res.status} ${res.statusText}`);
+    }
+
+    const data = await res.json();
+    return {
+      agentId: data.agentId,
+      assistantMessageId: data.assistantMessageId,
+      autoStarted: data.autoStarted ?? true,
+      createdAt: data.createdAt,
+      message: data.message ?? 'operation started',
+      operationId: data.operationId,
+      status: data.status ?? 'running',
+      success: data.success ?? true,
+      timestamp: data.timestamp,
+      topicId: data.topicId,
+      userMessageId: data.userMessageId,
+    } as ExecAgentResult;
   }
 
   /**
