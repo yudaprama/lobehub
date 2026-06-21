@@ -298,7 +298,7 @@ class AgentService {
    */
   updateAgentPinned = async (agentId: string, pinned: boolean) => {
     const db = await getLobehubQueryClient();
-    await db.update('agents', { id: agentId }, { pinned });
+    await db.update('agents', { id: agentId }, { pinned } as any);
   };
 
   /**

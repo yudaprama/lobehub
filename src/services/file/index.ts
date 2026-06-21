@@ -438,7 +438,7 @@ export class FileService {
     if (data.name !== undefined) updateData.name = data.name;
     if (data.parentId !== undefined) updateData.parent_id = data.parentId;
     if (data.metadata !== undefined) updateData.metadata = data.metadata;
-    await db.update('files', { id }, updateData);
+    await db.update('files', { id }, updateData as any);
   };
 
   getDownloadUrl = async (path: string): Promise<string> => {
