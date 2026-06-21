@@ -132,7 +132,7 @@ class AgentService {
       type: 'agent',
       group_id: params.groupId === 'default' ? null : (params.groupId ?? null),
       metadata: normalizedConfig as unknown as Record<string, unknown>,
-    } as any);
+    });
 
     return { agentId };
   };
@@ -214,10 +214,14 @@ class AgentService {
     signal?: AbortSignal,
   ) => {
     const db = await getLobehubQueryClient();
-    await db.update('sessions', { id: agentId }, {
-      metadata: config as unknown as Record<string, unknown>,
-      updated_at: new Date().toISOString(),
-    } as any);
+    await db.update(
+      'sessions',
+      { id: agentId },
+      {
+        metadata: config as unknown as Record<string, unknown>,
+        updated_at: new Date().toISOString(),
+      },
+    );
     return { success: true } as { agent?: any; success: boolean };
   };
 

@@ -37,7 +37,7 @@ export class SessionService {
       group_id: group === 'default' ? null : (group ?? null),
       pinned: session.pinned ?? false,
       metadata: { ...config, ...meta },
-    } as any);
+    });
     return id;
   };
 
