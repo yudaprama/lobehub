@@ -18,7 +18,6 @@ vi.mock('@/services/agent', () => ({
   agentService: {
     createAgent: vi.fn(),
     getAgentConfigById: vi.fn(),
-    getSessionConfig: vi.fn(),
     queryAgents: vi.fn(),
     updateAgentConfig: vi.fn(),
     updateAgentMeta: vi.fn(),

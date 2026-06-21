@@ -177,13 +177,6 @@ class AgentService {
   };
 
   /**
-   * @deprecated use getAgentConfigById instead
-   */
-  getSessionConfig = async (sessionId: string) => {
-    return lambdaClient.agent.getAgentConfig.query({ sessionId });
-  };
-
-  /**
    * Update agent config and return the updated agent data
    */
   updateAgentConfig = async (
