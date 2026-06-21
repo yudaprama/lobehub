@@ -1,14 +1,4 @@
-import { getLobehubClient } from '@/libs/prest/client';
-
-interface AsyncTaskRow {
-  created_at: string;
-  duration: number | null;
-  error: unknown;
-  id: string;
-  status: string;
-  type: string;
-  updated_at: string;
-}
+import { getLobehubQueryClient } from '@/libs/prest/client';
 
 class GenerationService {
   /**
@@ -19,7 +9,7 @@ class GenerationService {
    * The original BFF path merged both into one response shape.
    */
   async getGenerationStatus(generationId: string, asyncTaskId: string) {
-    const db = await getLobehubClient();
+    const db = await getLobehubQueryClient();
     const [gen] = await db.select('generations', { where: { id: generationId }, size: 1 });
     if (!gen) return null;
 
@@ -28,7 +18,7 @@ class GenerationService {
       size: 1,
     });
 
-    const taskRow = (task as AsyncTaskRow) ?? null;
+    const taskRow = task ?? null;
     return { ...gen, async_task: taskRow, status: taskRow?.status ?? null, generation: gen };
   }
 
@@ -40,7 +30,7 @@ class GenerationService {
    * `async_tasks` row when the generation's `async_task_id` points to it.
    */
   async deleteGeneration(generationId: string) {
-    const db = await getLobehubClient();
+    const db = await getLobehubQueryClient();
     await db.delete('generations', { id: generationId });
   }
 }

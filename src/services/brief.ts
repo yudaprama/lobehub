@@ -1,9 +1,9 @@
-import { getLobehubClient } from '@/libs/prest/client';
+import { getLobehubQueryClient } from '@/libs/prest/client';
 import { lambdaClient } from '@/libs/trpc/client';
 
 class BriefService {
   delete = async (id: string) => {
-    const db = await getLobehubClient();
+    const db = await getLobehubQueryClient();
     await db.delete('briefs', { id });
   };
 
@@ -12,7 +12,7 @@ class BriefService {
   };
 
   markRead = async (id: string) => {
-    const db = await getLobehubClient();
+    const db = await getLobehubQueryClient();
     const [row] = await db.update('briefs', { id }, { read_at: new Date().toISOString() });
     return row ?? null;
   };

@@ -1,8 +1,8 @@
-import { getPrestClient } from '@/libs/prest/client';
+import { getLobehubQueryClient } from '@/libs/prest/client';
 
 class UsageService {
   findByMonth = async (mo?: string) => {
-    const client = await getPrestClient();
+    const db = await getLobehubQueryClient();
 
     // Tier 2 stored SQL template aggregates token/cost from messages.usage
     // jsonb for the given calendar month. The BFF path hits the same table
@@ -15,14 +15,11 @@ class UsageService {
     end.setUTCMonth(end.getUTCMonth() + 1);
     const endDate = end.toISOString();
 
-    return client.query('lobehub', 'usageAggregateByDay', {
-      startDate,
-      endDate,
-    });
+    return db.query('lobehub', 'usageAggregateByDay', { startDate, endDate }, { camelCase: false });
   };
 
   findAndGroupByDay = async (mo?: string) => {
-    const client = await getPrestClient();
+    const db = await getLobehubQueryClient();
 
     // Same Tier 2 template — the server-side groupByDay path also just
     // aggregates messages by day, so we route both procedures through the
@@ -33,10 +30,7 @@ class UsageService {
     end.setUTCMonth(end.getUTCMonth() + 1);
     const endDate = end.toISOString();
 
-    return client.query('lobehub', 'usageAggregateByDay', {
-      startDate,
-      endDate,
-    });
+    return db.query('lobehub', 'usageAggregateByDay', { startDate, endDate }, { camelCase: false });
   };
 }
 
