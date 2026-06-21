@@ -1,5 +1,5 @@
 import { type GenerationBatchItem } from '@/database/schemas';
-import { getLobehubClient, getPrestClient } from '@/libs/prest/client';
+import { getLobehubQueryClient } from '@/libs/prest/client';
 import { type Generation, type GenerationBatch } from '@/types/generation';
 
 type GenerationBatchWithAsyncTaskId = GenerationBatch & {
@@ -18,12 +18,12 @@ class GenerationBatchService {
     topicId: string,
     type?: 'image' | 'video',
   ): Promise<GenerationBatchWithAsyncTaskId[]> {
-    const client = await getPrestClient();
+    const db = await getLobehubQueryClient();
 
     const params: Record<string, string | number | boolean> = { topicId };
     if (type) params.type = type;
 
-    return client.query<GenerationBatchWithAsyncTaskId>(
+    return db.query<GenerationBatchWithAsyncTaskId>(
       'lobehub',
       'generationBatchesWithGenerations',
       params,
@@ -37,7 +37,7 @@ class GenerationBatchService {
    * [[auth.user_id_filters]]. FK CASCADE removes child `generations` rows.
    */
   async deleteGenerationBatch(batchId: string): Promise<GenerationBatchItem | undefined> {
-    const db = await getLobehubClient();
+    const db = await getLobehubQueryClient();
     const [row] = await db.delete('generation_batches', { id: batchId });
     return (row as any) ?? undefined;
   }
