@@ -12,7 +12,7 @@ import { useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { usePermission } from '@/hooks/usePermission';
-import { getLobehubClient } from '@/libs/prest/client';
+import { getLobehubQueryClient } from '@/libs/prest/client';
 import { lambdaClient } from '@/libs/trpc/client';
 import { type ApiKeyItem, type CreateApiKeyParams, type UpdateApiKeyParams } from '@/types/apiKey';
 
@@ -54,7 +54,7 @@ const ApiKey: FC = () => {
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, params }: { id: string; params: UpdateApiKeyParams }) => {
-      const db = await getLobehubClient();
+      const db = await getLobehubQueryClient();
       const data: Record<string, unknown> = {};
       if (params.name !== undefined) data.name = params.name;
       if (params.enabled !== undefined) data.enabled = params.enabled;
@@ -70,7 +70,7 @@ const ApiKey: FC = () => {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      const db = await getLobehubClient();
+      const db = await getLobehubQueryClient();
       await db.delete('api_keys', { id });
     },
     onSuccess: () => {

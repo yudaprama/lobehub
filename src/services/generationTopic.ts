@@ -1,12 +1,12 @@
 import { type GenerationTopicItem } from '@/database/schemas';
-import { getLobehubClient } from '@/libs/prest/client';
+import { getLobehubQueryClient } from '@/libs/prest/client';
 import { lambdaClient } from '@/libs/trpc/client';
 import { type UpdateTopicValue } from '@/server/routers/lambda/generationTopic';
 import { type ImageGenerationTopic } from '@/types/generation';
 
 export class ServerService {
   async getAllGenerationTopics(type?: 'image' | 'video'): Promise<ImageGenerationTopic[]> {
-    const db = await getLobehubClient();
+    const db = await getLobehubQueryClient();
     return db.select('generation_topics', {
       ...(type ? { where: { type } } : {}),
       order: ['created_at:desc'],
@@ -14,7 +14,7 @@ export class ServerService {
   }
 
   async createTopic(type?: 'image' | 'video'): Promise<string> {
-    const db = await getLobehubClient();
+    const db = await getLobehubQueryClient();
     const [row] = await db.insert('generation_topics', {
       type: type ?? 'image',
     } as any);
@@ -22,7 +22,7 @@ export class ServerService {
   }
 
   async updateTopic(id: string, data: UpdateTopicValue): Promise<GenerationTopicItem | undefined> {
-    const db = await getLobehubClient();
+    const db = await getLobehubQueryClient();
     const [row] = await db.update('generation_topics', { id }, data as any);
     return row as any;
   }
