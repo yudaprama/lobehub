@@ -31,7 +31,7 @@ import {
 import { type z } from 'zod';
 
 import { idGenerator } from '@/libs/idGenerator';
-import { getLobehubClient, getPrestClient } from '@/libs/prest/client';
+import { getLobehubQueryClient } from '@/libs/prest/client';
 import { lambdaClient } from '@/libs/trpc/client';
 
 class UserMemoryService {
@@ -40,9 +40,9 @@ class UserMemoryService {
   addActivityMemory = async (
     params: z.infer<typeof ActivityMemoryItemSchema>,
   ): Promise<AddActivityMemoryResult> => {
-    const client = await getPrestClient();
+    const db = await getLobehubQueryClient();
     const parentId = idGenerator('memory');
-    await client.insert('lobehub', 'public', 'user_memories', {
+    await db.insert('user_memories', {
       id: parentId,
       memory_layer: 'activity',
       memory_category: (params as any).category ?? null,
@@ -54,7 +54,7 @@ class UserMemoryService {
       metadata: (params as any).metadata ?? null,
       status: 'active',
     });
-    await client.insert('lobehub', 'public', 'user_memories_activities', {
+    await db.insert('user_memories_activities', {
       user_memory_id: parentId,
       type: (params as any).type ?? 'general',
       status: (params as any).status ?? 'pending',
@@ -76,9 +76,9 @@ class UserMemoryService {
   addContextMemory = async (
     params: z.infer<typeof ContextMemoryItemSchema>,
   ): Promise<AddContextMemoryResult> => {
-    const client = await getPrestClient();
+    const db = await getLobehubQueryClient();
     const parentId = idGenerator('memory');
-    await client.insert('lobehub', 'public', 'user_memories', {
+    await db.insert('user_memories', {
       id: parentId,
       memory_layer: 'context',
       memory_category: (params as any).category ?? null,
@@ -90,7 +90,7 @@ class UserMemoryService {
       metadata: (params as any).metadata ?? null,
       status: 'active',
     });
-    await client.insert('lobehub', 'public', 'user_memories_contexts', {
+    await db.insert('user_memories_contexts', {
       user_memory_ids: (params as any).userMemoryIds ?? null,
       title: (params as any).title ?? null,
       description: (params as any).description ?? null,
@@ -107,9 +107,9 @@ class UserMemoryService {
   addExperienceMemory = async (
     params: z.infer<typeof ExperienceMemoryItemSchema>,
   ): Promise<AddExperienceMemoryResult> => {
-    const client = await getPrestClient();
+    const db = await getLobehubQueryClient();
     const parentId = idGenerator('memory');
-    await client.insert('lobehub', 'public', 'user_memories', {
+    await db.insert('user_memories', {
       id: parentId,
       memory_layer: 'experience',
       memory_category: (params as any).category ?? null,
@@ -121,7 +121,7 @@ class UserMemoryService {
       metadata: (params as any).metadata ?? null,
       status: 'active',
     });
-    await client.insert('lobehub', 'public', 'user_memories_experiences', {
+    await db.insert('user_memories_experiences', {
       user_memory_id: parentId,
       type: (params as any).type ?? null,
       situation: (params as any).situation ?? null,
@@ -139,9 +139,9 @@ class UserMemoryService {
   addIdentityMemory = async (
     params: z.infer<typeof AddIdentityActionSchema>,
   ): Promise<AddIdentityMemoryResult> => {
-    const client = await getPrestClient();
+    const db = await getLobehubQueryClient();
     const parentId = idGenerator('memory');
-    await client.insert('lobehub', 'public', 'user_memories', {
+    await db.insert('user_memories', {
       id: parentId,
       memory_layer: 'identity',
       memory_type: (params as any).type ?? null,
@@ -151,7 +151,7 @@ class UserMemoryService {
       metadata: (params as any).metadata ?? null,
       status: 'active',
     });
-    await client.insert('lobehub', 'public', 'user_memories_identities', {
+    await db.insert('user_memories_identities', {
       user_memory_id: parentId,
       type: (params as any).type ?? null,
       description: (params as any).description ?? null,
@@ -166,9 +166,9 @@ class UserMemoryService {
   addPreferenceMemory = async (
     params: z.infer<typeof PreferenceMemoryItemSchema>,
   ): Promise<AddPreferenceMemoryResult> => {
-    const client = await getPrestClient();
+    const db = await getLobehubQueryClient();
     const parentId = idGenerator('memory');
-    await client.insert('lobehub', 'public', 'user_memories', {
+    await db.insert('user_memories', {
       id: parentId,
       memory_layer: 'preference',
       memory_category: (params as any).category ?? null,
@@ -180,7 +180,7 @@ class UserMemoryService {
       metadata: (params as any).metadata ?? null,
       status: 'active',
     });
-    await client.insert('lobehub', 'public', 'user_memories_preferences', {
+    await db.insert('user_memories_preferences', {
       user_memory_id: parentId,
       type: (params as any).type ?? null,
       conclusion_directives: (params as any).conclusionDirectives ?? null,
@@ -197,8 +197,8 @@ class UserMemoryService {
   removeIdentityMemory = async (
     params: z.infer<typeof RemoveIdentityActionSchema>,
   ): Promise<RemoveIdentityMemoryResult> => {
-    const client = await getPrestClient();
-    await client.delete('lobehub', 'public', 'user_memories', {
+    const db = await getLobehubQueryClient();
+    await db.delete('user_memories', {
       id: { eq: (params as any).id },
     });
     return { success: true } as RemoveIdentityMemoryResult;
@@ -207,16 +207,14 @@ class UserMemoryService {
   updateIdentityMemory = async (
     params: z.infer<typeof UpdateIdentityActionSchema>,
   ): Promise<UpdateIdentityMemoryResult> => {
-    const client = await getPrestClient();
+    const db = await getLobehubQueryClient();
     const updates: Record<string, any> = {};
     if ((params as any).title) updates.title = (params as any).title;
     if ((params as any).summary) updates.summary = (params as any).summary;
     if ((params as any).details) updates.details = (params as any).details;
     if ((params as any).tags) updates.tags = (params as any).tags;
     if ((params as any).metadata) updates.metadata = (params as any).metadata;
-    await client.update(
-      'lobehub',
-      'public',
+    await db.update(
       'user_memories',
       {
         id: { eq: (params as any).id },
@@ -229,7 +227,7 @@ class UserMemoryService {
   // ── Query methods ──
 
   getMemoryDetail = async (params: { id: string; layer: LayersEnum }) => {
-    const db = await getLobehubClient();
+    const db = await getLobehubQueryClient();
     const rows = await db.select('user_memories', {
       where: { id: params.id },
       limit: 1,
@@ -242,7 +240,7 @@ class UserMemoryService {
   };
 
   queryExperiences = async (params?: ExperienceListParams): Promise<ExperienceListResult> => {
-    const db = await getLobehubClient();
+    const db = await getLobehubQueryClient();
     const where: Record<string, any> = {};
     const p = params as any;
     if (p?.type ?? params?.types?.[0]) where.type = p?.type ?? params?.types?.[0];
@@ -256,7 +254,7 @@ class UserMemoryService {
   };
 
   queryActivities = async (params?: ActivityListParams): Promise<ActivityListResult> => {
-    const db = await getLobehubClient();
+    const db = await getLobehubQueryClient();
     const where: Record<string, any> = {};
     const p = params as any;
     if (p?.type ?? params?.types?.[0]) where.type = p?.type ?? params?.types?.[0];
@@ -271,7 +269,7 @@ class UserMemoryService {
   };
 
   queryIdentities = async (params?: IdentityListParams): Promise<IdentityListResult> => {
-    const db = await getLobehubClient();
+    const db = await getLobehubQueryClient();
     const where: Record<string, any> = {};
     const p = params as any;
     if (p?.type ?? params?.types?.[0]) where.type = p?.type ?? params?.types?.[0];
@@ -285,7 +283,7 @@ class UserMemoryService {
   };
 
   retrieveMemory = async (params: SearchMemoryParams): Promise<SearchMemoryResult> => {
-    const db = await getLobehubClient();
+    const db = await getLobehubQueryClient();
     const where: Record<string, any> = {};
     const p = params as any;
     if (p?.q) where.title = { ilike: `%${p.q}%` };
@@ -301,7 +299,7 @@ class UserMemoryService {
   retrieveMemoryForTopic = async (topicId: string): Promise<SearchMemoryResult> => {
     // For now, return all memories — proper implementation would use the
     // topic's historySummary as the search query for semantic search.
-    const db = await getLobehubClient();
+    const db = await getLobehubQueryClient();
     const rows = await db.select('user_memories', {
       where: { status: 'active' },
       limit: 20,
@@ -314,21 +312,29 @@ class UserMemoryService {
     return this.retrieveMemory(params);
   };
 
+  /**
+   * Aggregate tags from user_memories grouped by layer.
+   *
+   * The Tier 2 `userMemoriesByLayer` template returns `{ tags, count }`
+   * (already snake_case-ish; no transformation needed). Preserve via
+   * { camelCase: false } to keep the typed result shape.
+   */
   queryTags = async (params?: { layers?: LayersEnum[]; page?: number; size?: number }) => {
-    const client = await getPrestClient();
-    const rows = await client.query<{ tags: string[]; count: number }>(
+    const db = await getLobehubQueryClient();
+    const rows = await db.query<{ tags: string[]; count: number }>(
       'lobehub',
       'userMemoriesByLayer',
       {
         layers: params?.layers?.join(',') ?? '',
         limit: params?.size ?? 50,
       },
+      { camelCase: false },
     );
     return rows;
   };
 
   queryIdentityRoles = async (params?: { page?: number; size?: number }) => {
-    const db = await getLobehubClient();
+    const db = await getLobehubQueryClient();
     const rows = await db.select('user_memories_identities', {
       select: ['role'],
       distinct: true,
@@ -345,7 +351,7 @@ class UserMemoryService {
   };
 
   queryIdentitiesForInjection = async (params?: { limit?: number }) => {
-    const db = await getLobehubClient();
+    const db = await getLobehubQueryClient();
     const rows = await db.select('user_memories_identities', {
       where: { relationship: { in: ['self', null] as any } },
       limit: params?.limit ?? 10,
@@ -372,7 +378,7 @@ class UserMemoryService {
     tags?: string[];
     types?: TypesEnum[];
   }) => {
-    const db = await getLobehubClient();
+    const db = await getLobehubQueryClient();
     const where: Record<string, any> = {};
     if (params?.layer) where.memory_layer = params.layer;
     if (params?.status?.length) where.status = { in: params.status };
