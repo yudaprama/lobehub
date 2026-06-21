@@ -2,6 +2,51 @@
 
 Guidelines for using AI coding agents in this LobeHub repository.
 
+## ⛔ HARD RULES — NEVER VIOLATE THESE
+
+### 1. NEVER build Go endpoints for simple CRUD
+
+**pREST already handles Tier 1 CRUD** (SELECT, INSERT, UPDATE, DELETE on
+any table with `user_id`). Before building ANY Go HTTP handler, ask:
+
+> "Can pREST do this with a single SQL statement?"
+
+If yes → **use `getLobehubClient()` in the frontend service**. Do NOT
+create a Go handler. Do NOT add a route to `egent-lobehub`. Do NOT
+create a new `*_handlers.go` file. This is a hard rule.
+
+**Examples of what pREST handles (do NOT build Go endpoints for these):**
+
+- SELECT from any table with `user_id` filter
+- INSERT into any table
+- UPDATE any row by primary key
+- DELETE any row by primary key
+
+**Examples of what genuinely needs Go:**
+
+- Multi-table cascade deletes (5+ tables with FK dependencies)
+- BFS/recursive folder expansion
+- LLM calls (chat completions, structured output)
+- Complex transactions with business logic (autosave window coalescing)
+- Streaming responses (SSE)
+
+**What happened when this rule was violated:** 4 Go handler files were
+built for simple INSERT/UPDATE/SELECT operations that pREST already
+handles. Frontend calls were routed through `egentFetch` → Go → dbPool →
+SQL when they should have gone directly `getLobehubClient()` → pREST →
+SQL. This wasted significant tokens and created unnecessary maintenance
+burden. These handlers must be removed and frontend calls converted to
+pREST.
+
+### 2. NEVER skip snake_case → camelCase mapping
+
+pREST returns Postgres column names in **snake_case** (`saved_at`,
+`save_source`, `document_id`). Frontend types and serializers expect
+**camelCase** (`savedAt`, `saveSource`, `documentId`). ALWAYS map
+columns when passing pREST results to existing functions.
+
+---
+
 ## Fork-specific rules (READ FIRST)
 
 **This is `yudaprama/lobehub`, a fork of upstream `lobehub/lobehub`.**
