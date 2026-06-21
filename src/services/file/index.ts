@@ -337,30 +337,6 @@ export class FileService {
     return lambdaClient.file.updateFile.mutate({ id, ...data });
   };
 
-  getRecentFiles = async (limit?: number) => {
-    return lambdaClient.file.recentFiles.query({ limit });
-  };
-
-  getRecentPages = async (limit?: number) => {
-    return lambdaClient.file.recentPages.query({ limit });
-  };
-
-  transferEntity = async (
-    id: string,
-    entityType: 'document' | 'file' | 'folder',
-    targetWorkspaceId: string | null,
-  ) => {
-    return lambdaClient.file.transferEntity.mutate({ entityType, id, targetWorkspaceId });
-  };
-
-  copyEntityToWorkspace = async (
-    id: string,
-    entityType: 'document' | 'file' | 'folder',
-    targetWorkspaceId: string | null,
-  ) => {
-    return lambdaClient.file.copyEntityToWorkspace.mutate({ entityType, id, targetWorkspaceId });
-  };
-
   getDownloadUrl = async (path: string): Promise<string> => {
     const client = await getAlistClient();
     if (!client) throw new Error('AList client not available');
