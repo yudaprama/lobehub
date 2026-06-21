@@ -7,6 +7,7 @@ const prefixes = {
   agents: 'agt',
   documents: 'docs',
   files: 'file',
+  memory: 'mem',
   messages: 'msg',
   sessions: 'ssn',
   topics: 'tpc',

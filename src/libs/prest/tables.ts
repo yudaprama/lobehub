@@ -880,9 +880,12 @@ export interface LobehubTables extends TableMap {
   user_memories: {
     select: {
       id: string;
+      user_id: string;
       memory_category: string | null;
       memory_layer: string | null;
       memory_type: string | null;
+      metadata: Record<string, unknown> | null;
+      tags: string[] | null;
       title: string | null;
       summary: string | null;
       details: string | null;
@@ -893,47 +896,156 @@ export interface LobehubTables extends TableMap {
       created_at: string;
       updated_at: string;
     };
-    input: { id: string; captured_at?: string };
+    input: {
+      memory_category?: string;
+      memory_layer?: string;
+      memory_type?: string;
+      metadata?: Record<string, unknown>;
+      tags?: string[];
+      title?: string;
+      summary?: string;
+      details?: string;
+      status?: string;
+    };
   };
   user_memories_activities: {
     select: {
       id: string;
-      user_memory_id: string | null;
+      user_id: string;
+      user_memory_id: string;
+      metadata: Record<string, unknown> | null;
+      tags: string[] | null;
       type: string;
       status: string;
       timezone: string | null;
       starts_at: string | null;
       ends_at: string | null;
+      associated_objects: unknown[] | null;
+      associated_subjects: unknown[] | null;
+      associated_locations: unknown[] | null;
+      notes: string | null;
+      narrative: string | null;
+      feedback: string | null;
       captured_at: string;
       created_at: string;
       updated_at: string;
     };
-    input: { id: string; type: string; status: string };
+    input: {
+      user_memory_id: string;
+      type: string;
+      status?: string;
+      timezone?: string;
+      starts_at?: string;
+      ends_at?: string;
+      metadata?: Record<string, unknown>;
+      tags?: string[];
+      associated_objects?: unknown[];
+      associated_subjects?: unknown[];
+      associated_locations?: unknown[];
+      notes?: string;
+      narrative?: string;
+      feedback?: string;
+    };
   };
   user_memories_contexts: {
     select: {
       id: string;
-      type: string | null;
+      user_id: string;
+      user_memory_ids: string[] | null;
+      metadata: Record<string, unknown> | null;
+      tags: string[] | null;
+      associated_objects: unknown[] | null;
+      associated_subjects: unknown[] | null;
       title: string | null;
       description: string | null;
+      type: string | null;
+      current_status: string | null;
+      score_impact: number | null;
+      score_urgency: number | null;
       captured_at: string;
       created_at: string;
       updated_at: string;
     };
-    input: { id: string };
+    input: {
+      user_memory_ids?: string[];
+      metadata?: Record<string, unknown>;
+      tags?: string[];
+      associated_objects?: unknown[];
+      associated_subjects?: unknown[];
+      title?: string;
+      description?: string;
+      type?: string;
+      current_status?: string;
+      score_impact?: number;
+      score_urgency?: number;
+    };
   };
   user_memories_experiences: {
-    select: { id: string; type: string | null; summary: string | null; captured_at: string };
-    input: { id: string };
+    select: {
+      id: string;
+      user_id: string;
+      user_memory_id: string;
+      metadata: Record<string, unknown> | null;
+      tags: string[] | null;
+      type: string | null;
+      situation: string | null;
+      reasoning: string | null;
+      possible_outcome: string | null;
+      action: string | null;
+      key_learning: string | null;
+      score_confidence: number | null;
+      captured_at: string;
+      created_at: string;
+      updated_at: string;
+    };
+    input: {
+      user_memory_id: string;
+      metadata?: Record<string, unknown>;
+      tags?: string[];
+      type?: string;
+      situation?: string;
+      reasoning?: string;
+      possible_outcome?: string;
+      action?: string;
+      key_learning?: string;
+      score_confidence?: number;
+    };
   };
   user_memories_identities: {
-    select: { id: string; type: string | null; summary: string | null; captured_at: string };
-    input: { id: string };
+    select: {
+      id: string;
+      user_id: string;
+      user_memory_id: string;
+      metadata: Record<string, unknown> | null;
+      tags: string[] | null;
+      type: string | null;
+      description: string | null;
+      episodic_date: string | null;
+      relationship: string | null;
+      role: string | null;
+      captured_at: string;
+      created_at: string;
+      updated_at: string;
+    };
+    input: {
+      user_memory_id: string;
+      metadata?: Record<string, unknown>;
+      tags?: string[];
+      type?: string;
+      description?: string;
+      episodic_date?: string;
+      relationship?: string;
+      role?: string;
+    };
   };
   user_memories_preferences: {
     select: {
       id: string;
-      user_memory_id: string | null;
+      user_id: string;
+      user_memory_id: string;
+      metadata: Record<string, unknown> | null;
+      tags: string[] | null;
+      conclusion_directives: string | null;
       type: string | null;
       suggestions: string | null;
       score_priority: number | null;
@@ -941,7 +1053,15 @@ export interface LobehubTables extends TableMap {
       created_at: string;
       updated_at: string;
     };
-    input: { id: string };
+    input: {
+      user_memory_id: string;
+      metadata?: Record<string, unknown>;
+      tags?: string[];
+      conclusion_directives?: string;
+      type?: string;
+      suggestions?: string;
+      score_priority?: number;
+    };
   };
   user_persona_document_histories: {
     select: { id: string; document_id: string; content: string; saved_at: string };
@@ -951,6 +1071,7 @@ export interface LobehubTables extends TableMap {
     select: { id: string; name: string; content: string; created_at: string; updated_at: string };
     input: { id: string; name: string; content: string };
   };
+
   user_settings: {
     select: {
       id: string;
@@ -1008,7 +1129,6 @@ export interface LobehubTables extends TableMap {
     select: { id: string; name: string; description: string | null; created_at: string };
     input: { id: string; name: string };
   };
-
   workspace_audit_logs: {
     select: {
       id: string;

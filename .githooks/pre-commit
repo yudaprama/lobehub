@@ -5,9 +5,7 @@ set -e
 
 export PATH="node_modules/.bin:$PATH"
 
-BRANCH=$(git branch --show-current)
-if [ "$BRANCH" = "dev" ] || [ "$BRANCH" = "main" ]; then
-  npm run type-check
-fi
+# Type-check moved to post-commit (background) + GitHub Actions CI.
+# Pre-commit only runs lint-staged now — keeps `git commit` fast and light.
 
 lint-staged
