@@ -25,7 +25,7 @@ class KnowledgeBaseService {
       name: params.name,
       description: params.description ?? null,
       avatar: (params as any).avatar ?? null,
-    });
+    } as any);
     return row;
   };
 

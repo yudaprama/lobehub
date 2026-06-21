@@ -17,7 +17,7 @@ export class ServerService {
     const db = await getLobehubClient();
     const [row] = await db.insert('generation_topics', {
       type: type ?? 'image',
-    });
+    } as any);
     return row?.id;
   }
 

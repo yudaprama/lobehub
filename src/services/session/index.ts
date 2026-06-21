@@ -37,7 +37,7 @@ export class SessionService {
       group_id: group === 'default' ? null : (group ?? null),
       pinned: session.pinned ?? false,
       metadata: { ...config, ...meta },
-    });
+    } as any);
     return id;
   };
 
@@ -105,7 +105,7 @@ export class SessionService {
 
   createSessionGroup = async (name: string, sort?: number): Promise<string> => {
     const db = await getLobehubClient();
-    const [row] = await db.insert('session_groups', { id: crypto.randomUUID(), name, sort });
+    const [row] = await db.insert('session_groups', { id: crypto.randomUUID(), name, sort } as any);
     return row?.id;
   };
 

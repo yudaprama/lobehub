@@ -43,12 +43,12 @@ class NotebookService {
       source_type: params.sourceType,
       title: params.title,
       type: params.type,
-    });
+    } as any);
     if (doc && params.topicId) {
       await db.insert('topic_documents', {
         document_id: doc.id,
         topic_id: params.topicId,
-      });
+      } as any);
     }
     return doc;
   };

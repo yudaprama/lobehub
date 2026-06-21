@@ -11,7 +11,7 @@ import {
 export class AiProviderService {
   createAiProvider = async (params: CreateAiProviderParams) => {
     const db = await getLobehubClient();
-    return db.insert('ai_providers', params);
+    return db.insert('ai_providers', params as any);
   };
 
   getAiProviderList = async () => {
