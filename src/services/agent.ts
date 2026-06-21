@@ -1,6 +1,7 @@
 import { type AgentItem, type AgentRankItem, type LobeAgentConfig } from '@lobechat/types';
 import { type PartialDeep } from 'type-fest';
 
+import { idGenerator } from '@/libs/idGenerator';
 import { getPrestClient } from '@/libs/prest/client';
 import { lambdaClient } from '@/libs/trpc/client';
 
@@ -108,11 +109,28 @@ class AgentService {
    */
   createAgent = async (params: CreateAgentParams): Promise<CreateAgentResult> => {
     const normalizedConfig = normalizeMarketAgentModel(params.config);
+    const client = await getPrestClient();
+    const agentId = idGenerator('agents');
 
-    return lambdaClient.agent.createAgent.mutate({
-      config: normalizedConfig as any,
-      groupId: params.groupId,
-    });
+    await client.insert('lobehub', 'public', 'agents', {
+      id: agentId,
+      title: (normalizedConfig as any)?.title ?? null,
+      avatar: (normalizedConfig as any)?.avatar ?? null,
+      description: (normalizedConfig as any)?.description ?? null,
+      tags: (normalizedConfig as any)?.tags ?? null,
+      model: (normalizedConfig as any)?.model ?? null,
+      session_group_id: params.groupId ?? null,
+      virtual: false,
+    } as any);
+
+    await client.insert('lobehub', 'public', 'sessions', {
+      id: agentId,
+      type: 'agent',
+      group_id: params.groupId === 'default' ? null : (params.groupId ?? null),
+      metadata: normalizedConfig as any,
+    } as any);
+
+    return { agentId };
   };
 
   /**
@@ -121,11 +139,21 @@ class AgentService {
    */
   createAgentOnly = async (params: CreateAgentOnlyParams): Promise<CreateAgentOnlyResult> => {
     const normalizedConfig = normalizeMarketAgentModel(params.config);
+    const client = await getPrestClient();
+    const agentId = idGenerator('agents');
 
-    return lambdaClient.agent.createAgentOnly.mutate({
-      config: normalizedConfig as any,
-      groupId: params.groupId,
-    });
+    await client.insert('lobehub', 'public', 'agents', {
+      id: agentId,
+      title: (normalizedConfig as any)?.title ?? null,
+      avatar: (normalizedConfig as any)?.avatar ?? null,
+      description: (normalizedConfig as any)?.description ?? null,
+      tags: (normalizedConfig as any)?.tags ?? null,
+      model: (normalizedConfig as any)?.model ?? null,
+      session_group_id: params.groupId ?? null,
+      virtual: true,
+    } as any);
+
+    return { agentId };
   };
 
   createAgentKnowledgeBase = async (
@@ -176,18 +204,20 @@ class AgentService {
     return lambdaClient.agent.getAgentConfigById.query({ agentId });
   };
 
-  /**
-   * Update agent config and return the updated agent data
-   */
   updateAgentConfig = async (
     agentId: string,
     config: PartialDeep<LobeAgentConfig>,
     signal?: AbortSignal,
   ) => {
-    return lambdaClient.agent.updateAgentConfig.mutate(
-      { agentId, value: config },
-      { context: { showNotification: false }, signal },
+    const client = await getPrestClient();
+    await client.update(
+      'lobehub',
+      'public',
+      'sessions',
+      { id: agentId },
+      { metadata: config as any, updated_at: new Date().toISOString() },
     );
+    return { success: true } as { agent?: any; success: boolean };
   };
 
   /**
@@ -205,16 +235,10 @@ class AgentService {
     return lambdaClient.agent.getBuiltinAgent.query({ slug });
   };
 
-  /**
-   * Remove an agent.
-   *
-   * Stays on lambdaClient — the BFF also removes the linked session row
-   * (sessions.id = agents.id) and reshapes the session list response.
-   * pREST FK cascade could handle the row deletion, but the response
-   * shape contract requires the BFF.
-   */
   removeAgent = async (agentId: string) => {
-    return lambdaClient.agent.removeAgent.mutate({ agentId });
+    const client = await getPrestClient();
+    await client.delete('lobehub', 'public', 'sessions', { id: agentId });
+    await client.delete('lobehub', 'public', 'agents', { id: agentId });
   };
 
   /**

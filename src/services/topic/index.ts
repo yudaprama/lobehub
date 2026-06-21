@@ -1,6 +1,7 @@
 import type { Filter } from 'prest-js-sdk';
 
 import { INBOX_SESSION_ID } from '@/const/session';
+import { idGenerator } from '@/libs/idGenerator';
 import { getPrestClient, getWorkspaceParams } from '@/libs/prest/client';
 import { lambdaClient } from '@/libs/trpc/client';
 import { type BatchTaskResult } from '@/types/service';
@@ -45,23 +46,59 @@ interface TopicRow {
 }
 
 export class TopicService {
-  createTopic = (params: CreateTopicParams): Promise<string> => {
-    return lambdaClient.topic.createTopic.mutate({
-      ...params,
-      sessionId: this.toDbSessionId(params.sessionId),
-    });
+  createTopic = async (params: CreateTopicParams): Promise<string> => {
+    const client = await getPrestClient();
+    const id = idGenerator('topics');
+    await client.insert('lobehub', 'public', 'topics', {
+      id,
+      title: params.title ?? null,
+      favorite: params.favorite ?? false,
+      session_id: this.toDbSessionId(params.sessionId),
+      trigger: params.trigger ?? null,
+    } as any);
+    return id;
   };
 
-  batchCreateTopics = (importTopics: ChatTopic[]): Promise<BatchTaskResult> => {
-    return lambdaClient.topic.batchCreateTopics.mutate(importTopics);
+  batchCreateTopics = async (importTopics: ChatTopic[]): Promise<BatchTaskResult> => {
+    const client = await getPrestClient();
+    const results = await Promise.allSettled(
+      importTopics.map((topic) =>
+        client.insert('lobehub', 'public', 'topics', {
+          id: topic.id || idGenerator('topics'),
+          title: topic.title ?? null,
+          favorite: topic.favorite ?? false,
+          session_id: this.toDbSessionId(topic.sessionId),
+          agent_id: (topic as any).agentId ?? null,
+          metadata: (topic as any).metadata ?? null,
+        }),
+      ),
+    );
+    const success = results.filter((r) => r.status === 'fulfilled').length;
+    const errors = results
+      .map((r, i) =>
+        r.status === 'rejected' ? { id: importTopics[i].id, error: String(r.reason) } : null,
+      )
+      .filter(Boolean) as any[];
+    return {
+      added: success,
+      errors,
+      ids: importTopics.map((t) => t.id),
+      skips: [],
+      success: errors.length === 0,
+    };
   };
 
   cloneTopic = (id: string, newTitle?: string): Promise<string> => {
     return lambdaClient.topic.cloneTopic.mutate({ id, newTitle });
   };
 
-  batchMoveTopics = (topicIds: string[], targetAgentId: string) => {
-    return lambdaClient.topic.batchMoveTopics.mutate({ targetAgentId, topicIds });
+  batchMoveTopics = async (topicIds: string[], targetAgentId: string) => {
+    const client = await getPrestClient();
+    await Promise.all(
+      topicIds.map((id) =>
+        client.update('lobehub', 'public', 'topics', { id }, { agent_id: targetAgentId }),
+      ),
+    );
   };
 
   importTopic = (params: {
@@ -194,8 +231,9 @@ export class TopicService {
     return lambdaClient.topic.getTopicContext.query({ topicId });
   };
 
-  updateTopicMetadata = (id: string, metadata: UpdateTopicMetadataInput) => {
-    return lambdaClient.topic.updateTopicMetadata.mutate({ id, metadata });
+  updateTopicMetadata = async (id: string, metadata: UpdateTopicMetadataInput) => {
+    const client = await getPrestClient();
+    await client.update('lobehub', 'public', 'topics', { id }, { metadata });
   };
 
   getShareInfo = (topicId: string) => {

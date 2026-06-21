@@ -509,6 +509,61 @@ export interface LobehubTables extends TableMap {
     };
     input: { id: string; name: string; description?: string | null; avatar?: string | null };
   };
+  message_plugins: {
+    select: {
+      id: string;
+      message_id: string;
+      identifier: string | null;
+      arguments: string | null;
+      state: unknown;
+      error: unknown;
+      created_at: string;
+      updated_at: string;
+    };
+    input: {
+      message_id: string;
+      identifier?: string | null;
+      arguments?: string | null;
+      state?: unknown;
+    };
+    update: {
+      arguments?: string | null;
+      state?: unknown;
+      error?: unknown;
+    };
+  };
+  message_translates: {
+    select: {
+      id: string;
+      content: string | null;
+      from: string | null;
+      to: string | null;
+      created_at: string;
+      updated_at: string;
+    };
+    input: { id: string; content?: string | null; from?: string | null; to?: string | null };
+    update: {
+      content?: string | null;
+      from?: string | null;
+      to?: string | null;
+    };
+  };
+  message_tts: {
+    select: {
+      id: string;
+      content_md5: string | null;
+      file: string | null;
+      voice: string | null;
+      created_at: string;
+      updated_at: string;
+    };
+    input: { id: string; content_md5?: string | null; file?: string | null; voice?: string | null };
+    update: {
+      content_md5?: string | null;
+      file?: string | null;
+      voice?: string | null;
+    };
+  };
   messages: {
     select: LobehubMessageRow;
     input: Record<string, unknown>;
@@ -623,9 +678,11 @@ export interface LobehubTables extends TableMap {
     input: {
       id: string;
       title?: string | null;
+      slug?: string | null;
       group_id?: string | null;
       type?: string | null;
       pinned?: boolean | null;
+      metadata?: unknown;
     };
   };
   task_comments: {
@@ -820,9 +877,38 @@ export interface LobehubTables extends TableMap {
     select: { id: string; name: string; content: string; created_at: string; updated_at: string };
     input: { id: string; name: string; content: string };
   };
+  user_settings: {
+    select: {
+      id: string;
+      interests: unknown;
+      preference: unknown;
+      guide: unknown;
+      settings: unknown;
+      created_at: string;
+      updated_at: string;
+    };
+    input: { id: string };
+    update: Record<string, unknown>;
+  };
   users: {
-    select: { id: string; email: string; name: string; created_at: string; updated_at: string };
-    input: { id: string; email: string; name?: string };
+    select: {
+      id: string;
+      email: string;
+      name: string;
+      avatar: string | null;
+      full_name: string | null;
+      username: string | null;
+      created_at: string;
+      updated_at: string;
+    };
+    input: {
+      id: string;
+      email: string;
+      name?: string;
+      avatar?: string | null;
+      full_name?: string | null;
+      username?: string | null;
+    };
   };
   verify_check_results: {
     select: {

@@ -1,3 +1,6 @@
+import type { Filter } from 'prest-js-sdk';
+
+import { idGenerator } from '@/libs/idGenerator';
 import { getLobehubClient, getPrestClient, getWorkspaceParams } from '@/libs/prest/client';
 import { lambdaClient } from '@/libs/trpc/client';
 import {
@@ -24,12 +27,18 @@ export class SessionService {
     type: LobeSessionType,
     data: Partial<LobeAgentSession>,
   ): Promise<string> => {
+    const db = await getLobehubClient();
+    const id = idGenerator('sessions');
     const { config, group, meta, ...session } = data;
-    return lambdaClient.session.createSession.mutate({
-      config: { ...config, ...meta } as any,
-      session: { ...session, groupId: group },
+    await db.insert('sessions', {
+      id,
+      title: (meta as any)?.title ?? null,
       type,
+      group_id: group === 'default' ? null : (group ?? null),
+      pinned: session.pinned ?? false,
+      metadata: { ...config, ...meta },
     });
+    return id;
   };
 
   cloneSession = (id: string, newTitle: string): Promise<string | undefined> => {
@@ -53,27 +62,41 @@ export class SessionService {
     range?: [string, string];
     startDate?: string;
   }): Promise<number> => {
-    return lambdaClient.session.countSessions.query(params);
+    const client = await getPrestClient();
+    const where: Filter = {};
+    if (params?.startDate) where.created_at = { gte: params.startDate };
+    if (params?.endDate)
+      where.created_at = { ...(where.created_at as object), lte: params.endDate };
+    const rows = await client.select<{ count: number }>('lobehub', 'public', 'sessions', {
+      count: true,
+      ...(Object.keys(where).length ? { where } : {}),
+    });
+    const row = Array.isArray(rows) ? rows[0] : undefined;
+    return row?.count ?? 0;
   };
 
-  updateSession = (id: string, data: Partial<UpdateSessionParams>) => {
-    const { group, pinned, meta, updatedAt } = data;
-    return lambdaClient.session.updateSession.mutate({
-      id,
-      value: { groupId: group === 'default' ? null : group, pinned, ...meta, updatedAt },
-    });
+  updateSession = async (id: string, data: Partial<UpdateSessionParams>) => {
+    const db = await getLobehubClient();
+    const patch: Record<string, unknown> = {};
+    if (data.group !== undefined) patch.group_id = data.group === 'default' ? null : data.group;
+    if (data.pinned !== undefined) patch.pinned = data.pinned;
+    if (data.meta !== undefined) patch.metadata = data.meta;
+    if (data.updatedAt !== undefined) patch.updated_at = data.updatedAt;
+    await db.update('sessions', { id }, patch);
   };
 
   searchSessions = (keywords: string): Promise<LobeSessions> => {
     return lambdaClient.session.searchSessions.query({ keywords });
   };
 
-  removeSession = (id: string) => {
-    return lambdaClient.session.removeSession.mutate({ id });
+  removeSession = async (id: string) => {
+    const db = await getLobehubClient();
+    await db.delete('sessions', { id });
   };
 
-  removeAllSessions = () => {
-    return lambdaClient.session.removeAllSessions.mutate();
+  removeAllSessions = async () => {
+    const db = await getLobehubClient();
+    await db.delete('sessions', {});
   };
 
   // ************************************** //

@@ -21,7 +21,20 @@ export class UserService {
     duration: number;
     updatedAt: string;
   }> => {
-    return lambdaClient.user.getUserRegistrationDuration.query();
+    const client = await getPrestClient();
+    const rows = await client.select<{ created_at: string; updated_at: string }>(
+      'lobehub',
+      'public',
+      'users',
+      { size: 1 },
+    );
+    const row = Array.isArray(rows) ? rows[0] : undefined;
+    if (!row) {
+      return { createdAt: '', duration: 0, updatedAt: '' };
+    }
+    const createdAt = new Date(row.created_at);
+    const duration = Date.now() - createdAt.getTime();
+    return { createdAt: row.created_at, duration, updatedAt: row.updated_at };
   };
 
   getUserState = async (): Promise<UserInitializationState> => {
@@ -101,19 +114,23 @@ export class UserService {
   };
 
   updateAvatar = async (avatar: string) => {
-    return lambdaClient.user.updateAvatar.mutate(avatar);
+    const client = await getPrestClient();
+    await client.update('lobehub', 'public', 'users', {}, { avatar });
   };
 
   updateInterests = async (interests: string[]) => {
-    return lambdaClient.user.updateInterests.mutate(interests);
+    const client = await getPrestClient();
+    await client.update('lobehub', 'public', 'user_settings', {}, { interests });
   };
 
   updateFullName = async (fullName: string) => {
-    return lambdaClient.user.updateFullName.mutate(fullName);
+    const client = await getPrestClient();
+    await client.update('lobehub', 'public', 'users', {}, { full_name: fullName });
   };
 
   updateUsername = async (username: string) => {
-    return lambdaClient.user.updateUsername.mutate(username);
+    const client = await getPrestClient();
+    await client.update('lobehub', 'public', 'users', {}, { username });
   };
 
   /**
@@ -148,14 +165,9 @@ export class UserService {
     return lambdaClient.user.updateSettings.mutate(value, { signal });
   };
 
-  /**
-   * Reset user settings to defaults.
-   *
-   * Stays on lambdaClient — keeps the pattern consistent with
-   * updateUserSettings (both touch the same row).
-   */
   resetUserSettings = async () => {
-    return lambdaClient.user.resetSettings.mutate();
+    const client = await getPrestClient();
+    await client.update('lobehub', 'public', 'user_settings', {}, { settings: {} });
   };
 }
 

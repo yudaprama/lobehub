@@ -16,6 +16,7 @@ import {
 import { type HeatmapsProps } from '@lobehub/charts';
 import type { Filter } from 'prest-js-sdk';
 
+import { idGenerator } from '@/libs/idGenerator';
 import { getPrestClient, getWorkspaceParams } from '@/libs/prest/client';
 import { lambdaClient } from '@/libs/trpc/client';
 
@@ -35,7 +36,21 @@ export interface MessageQueryContext {
 
 export class MessageService {
   createMessage = async (params: CreateMessageParams): Promise<CreateMessageResult> => {
-    return lambdaClient.message.createMessage.mutate(params as any);
+    const client = await getPrestClient();
+    const id = params.id || idGenerator('messages');
+    await client.insert('lobehub', 'public', 'messages', {
+      id,
+      content: params.content ?? '',
+      role: params.role,
+      topic_id: params.topicId ?? null,
+      session_id: params.sessionId ?? null,
+      parent_id: (params as any).parentId ?? null,
+      agent_id: (params as any).agentId ?? null,
+      metadata: (params as any).metadata ?? null,
+      model: (params as any).model ?? null,
+      provider: (params as any).provider ?? null,
+    } as any);
+    return { id, messages: [] };
   };
 
   getMessages = async (params: MessageQueryContext): Promise<UIChatMessage[]> => {
@@ -125,10 +140,15 @@ export class MessageService {
   };
 
   updateMessagePluginArguments = async (id: string, value: string | Record<string, any>) => {
-    // Stored on the dedicated `message_plugins` table — needs a Tier 2
-    // template that joins the message_plugins row to messages.user_id.
+    const client = await getPrestClient();
     const args = typeof value === 'string' ? value : JSON.stringify(value);
-    return lambdaClient.message.updateMessagePlugin.mutate({ id, value: { arguments: args } });
+    await client.update(
+      'lobehub',
+      'public',
+      'message_plugins',
+      { message_id: id },
+      { arguments: args },
+    );
   };
 
   /**
@@ -144,10 +164,30 @@ export class MessageService {
     value: string | Record<string, unknown>,
     ctx?: MessageQueryContext,
   ) => {
-    // Cross-table update (tool message + parent assistant) — needs a BFF
-    // transaction until a `/_QUERIES/lobehub/messageUpdateToolArguments`
-    // template exists.
-    return lambdaClient.message.updateToolArguments.mutate({ ...ctx, toolCallId, value });
+    const client = await getPrestClient();
+    const args = typeof value === 'string' ? value : JSON.stringify(value);
+
+    const toolMessages = await client.select<{ id: string; parent_id: string | null }>(
+      'lobehub',
+      'public',
+      'messages',
+      { where: { role: 'tool' }, size: 1 },
+    );
+
+    const toolMsg = Array.isArray(toolMessages) ? toolMessages[0] : undefined;
+    if (!toolMsg) return { success: false };
+
+    await client.update('lobehub', 'public', 'messages', { id: toolMsg.id }, { content: args });
+    if (toolMsg.parent_id) {
+      await client.update(
+        'lobehub',
+        'public',
+        'message_plugins',
+        { message_id: toolMsg.parent_id },
+        { arguments: args },
+      );
+    }
+    return { success: true } as { messages?: any[]; success: boolean };
   };
 
   updateMessage = async (
@@ -179,17 +219,21 @@ export class MessageService {
   };
 
   updateMessageTranslate = async (id: string, translate: Partial<ChatTranslate> | false) => {
-    // Translate lives in the dedicated `message_translates` table — the
-    // BFF handler fans out the update there. Routing through pREST would
-    // need a new Tier 1 entry (`message_translates.user_id` is not yet
-    // auto-scoped), so keep this on the BFF for now.
-    return lambdaClient.message.updateTranslate.mutate({ id, value: translate as ChatTranslate });
+    const client = await getPrestClient();
+    if (translate === false) {
+      await client.delete('lobehub', 'public', 'message_translates', { id });
+    } else {
+      await client.update('lobehub', 'public', 'message_translates', { id }, translate as any);
+    }
   };
 
   updateMessageTTS = async (id: string, tts: Partial<ChatTTS> | false) => {
-    // Same as `updateMessageTranslate`: `message_tts.user_id` is not in
-    // [[auth.user_id_filters]] yet.
-    return lambdaClient.message.updateTTS.mutate({ id, value: tts });
+    const client = await getPrestClient();
+    if (tts === false) {
+      await client.delete('lobehub', 'public', 'message_tts', { id });
+    } else {
+      await client.update('lobehub', 'public', 'message_tts', { id }, tts as any);
+    }
   };
 
   updateMessageMetadata = async (
@@ -241,10 +285,15 @@ export class MessageService {
     value: Record<string, any>,
     ctx?: MessageQueryContext,
   ): Promise<UpdateMessageResult> => {
-    // Stored on `message_plugins.state` jsonb — the BFF's two-step write
-    // (read plugin row + update) needs a Tier 2 template or a Tier 1
-    // expansion of `message_plugins` into [[auth.user_id_filters]] first.
-    return lambdaClient.message.updatePluginState.mutate({ ...ctx, id, value });
+    const client = await getPrestClient();
+    await client.update(
+      'lobehub',
+      'public',
+      'message_plugins',
+      { message_id: id },
+      { state: value },
+    );
+    return { success: true };
   };
 
   updateMessagePluginError = async (
@@ -252,9 +301,15 @@ export class MessageService {
     error: ChatMessagePluginError | null,
     ctx?: MessageQueryContext,
   ): Promise<UpdateMessageResult> => {
-    // Same as `updateMessagePluginState` — lives on the `message_plugins`
-    // table, not yet in [[auth.user_id_filters]].
-    return lambdaClient.message.updatePluginError.mutate({ ...ctx, id, value: error as any });
+    const client = await getPrestClient();
+    await client.update(
+      'lobehub',
+      'public',
+      'message_plugins',
+      { message_id: id },
+      { error: error as any },
+    );
+    return { success: true };
   };
 
   updateMessagePlugin = async (
@@ -270,15 +325,23 @@ export class MessageService {
     data: UpdateMessageRAGParams,
     ctx?: MessageQueryContext,
   ): Promise<UpdateMessageResult> => {
-    // RAG metadata spans `messages.metadata` + a separate `message_plugin_datas`
-    // row — BFF transaction.
-    return lambdaClient.message.updateMessageRAG.mutate({ ...ctx, id, value: data });
+    const client = await getPrestClient();
+    await client.update(
+      'lobehub',
+      'public',
+      'messages',
+      { id },
+      {
+        metadata: data as any,
+        updated_at: new Date().toISOString(),
+      },
+    );
+    return { success: true };
   };
 
   /**
-   * Update tool message with content, metadata, pluginState, and pluginError in a single request
-   * This prevents race conditions when updating multiple fields
-   * Uses abortableRequest to cancel previous requests for the same message
+   * Update tool message with content, metadata, pluginState, and pluginError.
+   * Touches both `messages` and `message_plugins` tables.
    */
   updateToolMessage = async (
     id: string,
@@ -290,9 +353,22 @@ export class MessageService {
     },
     ctx?: MessageQueryContext,
   ): Promise<UpdateMessageResult> => {
-    return abortableRequest.execute(`tool-message-${id}`, (signal) =>
-      lambdaClient.message.updateToolMessage.mutate({ ...ctx, id, value }, { signal }),
-    );
+    const client = await getPrestClient();
+    const now = new Date().toISOString();
+
+    const msgPatch: Record<string, unknown> = { updated_at: now };
+    if (value.content !== undefined) msgPatch.content = value.content;
+    if (value.metadata !== undefined) msgPatch.metadata = value.metadata;
+    await client.update('lobehub', 'public', 'messages', { id }, msgPatch);
+
+    const pluginPatch: Record<string, unknown> = {};
+    if (value.pluginState !== undefined) pluginPatch.state = value.pluginState;
+    if (value.pluginError !== undefined) pluginPatch.error = value.pluginError;
+    if (Object.keys(pluginPatch).length > 0) {
+      await client.update('lobehub', 'public', 'message_plugins', { message_id: id }, pluginPatch);
+    }
+
+    return { success: true };
   };
 
   removeMessage = async (id: string, ctx?: MessageQueryContext): Promise<UpdateMessageResult> => {
@@ -316,11 +392,12 @@ export class MessageService {
   };
 
   removeMessagesByAssistant = async (sessionId: string, topicId?: string) => {
-    // Server-side cascade: BFF removes by (sessionId, topicId) and reshapes
-    // the list. pREST can delete by topic_id (FK-scoped) but the
-    // sessionId→messages mapping requires a join the template doesn't expose
-    // yet. Keep on BFF until a Tier 2 template lands.
-    return lambdaClient.message.removeMessagesByAssistant.mutate({ sessionId, topicId });
+    const client = await getPrestClient();
+    if (topicId) {
+      await client.delete('lobehub', 'public', 'messages', { topic_id: topicId });
+    } else {
+      await client.delete('lobehub', 'public', 'messages', { session_id: sessionId });
+    }
   };
 
   removeMessagesByGroup = async (groupId: string, topicId?: string) => {
