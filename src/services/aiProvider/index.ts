@@ -1,4 +1,4 @@
-import { getLobehubClient } from '@/libs/prest/client';
+import { getLobehubQueryClient } from '@/libs/prest/client';
 import { lambdaClient } from '@/libs/trpc/client';
 import {
   type AiProviderDetailItem,
@@ -10,28 +10,32 @@ import {
 
 export class AiProviderService {
   createAiProvider = async (params: CreateAiProviderParams) => {
-    const db = await getLobehubClient();
+    const db = await getLobehubQueryClient();
     return db.insert('ai_providers', params);
   };
 
   getAiProviderList = async () => {
-    const db = await getLobehubClient();
-    return db.select('ai_providers', { order: ['sort:asc'] });
+    const db = await getLobehubQueryClient();
+    return db.select('ai_providers', { order: ['sort:asc'], camelCase: false });
   };
 
   getAiProviderById = async (id: string): Promise<AiProviderDetailItem | undefined> => {
-    const db = await getLobehubClient();
-    const [provider] = await db.select('ai_providers', { where: { id }, size: 1 });
+    const db = await getLobehubQueryClient();
+    const [provider] = await db.select('ai_providers', {
+      where: { id },
+      size: 1,
+      camelCase: false,
+    });
     return provider as AiProviderDetailItem | undefined;
   };
 
   toggleProviderEnabled = async (id: string, enabled: boolean) => {
-    const db = await getLobehubClient();
+    const db = await getLobehubQueryClient();
     await db.update('ai_providers', { id }, { enabled });
   };
 
   updateAiProvider = async (id: string, value: any) => {
-    const db = await getLobehubClient();
+    const db = await getLobehubQueryClient();
     await db.update('ai_providers', { id }, value);
   };
 
@@ -41,14 +45,14 @@ export class AiProviderService {
   };
 
   updateAiProviderOrder = async (items: AiProviderSortMap[]) => {
-    const db = await getLobehubClient();
+    const db = await getLobehubQueryClient();
     await Promise.all(
       items.map((item) => db.update('ai_providers', { id: item.id }, { sort: item.sort })),
     );
   };
 
   deleteAiProvider = async (id: string) => {
-    const db = await getLobehubClient();
+    const db = await getLobehubQueryClient();
     await db.delete('ai_providers', { id });
   };
 

@@ -2,7 +2,7 @@ import { type AgentItem, type AgentRankItem, type LobeAgentConfig } from '@lobec
 import { type PartialDeep } from 'type-fest';
 
 import { idGenerator } from '@/libs/idGenerator';
-import { getPrestClient } from '@/libs/prest/client';
+import { getLobehubQueryClient } from '@/libs/prest/client';
 import { lambdaClient } from '@/libs/trpc/client';
 
 export const AVAILABLE_AGENTS_CONTEXT_LIMIT = 10;
@@ -106,13 +106,18 @@ class AgentService {
   /**
    * Create a new agent with session.
    * Automatically normalizes market agent config (handles model as object).
+   *
+   * `as any` on both inserts: agents + sessions inserts pass snake_case
+   * fields (session_group_id, group_id, metadata) whose shapes don't
+   * match the SDK's AgentsInput / SessionsInput — those are pre-existing
+   * structural mismatches unrelated to the user_id fix.
    */
   createAgent = async (params: CreateAgentParams): Promise<CreateAgentResult> => {
     const normalizedConfig = normalizeMarketAgentModel(params.config);
-    const client = await getPrestClient();
+    const db = await getLobehubQueryClient();
     const agentId = idGenerator('agents');
 
-    await client.insert('lobehub', 'public', 'agents', {
+    await db.insert('agents', {
       id: agentId,
       title: (normalizedConfig as any)?.title ?? null,
       avatar: (normalizedConfig as any)?.avatar ?? null,
@@ -123,7 +128,7 @@ class AgentService {
       virtual: false,
     } as any);
 
-    await client.insert('lobehub', 'public', 'sessions', {
+    await db.insert('sessions', {
       id: agentId,
       type: 'agent',
       group_id: params.groupId === 'default' ? null : (params.groupId ?? null),
@@ -139,10 +144,10 @@ class AgentService {
    */
   createAgentOnly = async (params: CreateAgentOnlyParams): Promise<CreateAgentOnlyResult> => {
     const normalizedConfig = normalizeMarketAgentModel(params.config);
-    const client = await getPrestClient();
+    const db = await getLobehubQueryClient();
     const agentId = idGenerator('agents');
 
-    await client.insert('lobehub', 'public', 'agents', {
+    await db.insert('agents', {
       id: agentId,
       title: (normalizedConfig as any)?.title ?? null,
       avatar: (normalizedConfig as any)?.avatar ?? null,
@@ -209,10 +214,8 @@ class AgentService {
     config: PartialDeep<LobeAgentConfig>,
     signal?: AbortSignal,
   ) => {
-    const client = await getPrestClient();
-    await client.update(
-      'lobehub',
-      'public',
+    const db = await getLobehubQueryClient();
+    await db.update(
       'sessions',
       { id: agentId },
       { metadata: config as any, updated_at: new Date().toISOString() },
@@ -236,9 +239,9 @@ class AgentService {
   };
 
   removeAgent = async (agentId: string) => {
-    const client = await getPrestClient();
-    await client.delete('lobehub', 'public', 'sessions', { id: agentId });
-    await client.delete('lobehub', 'public', 'agents', { id: agentId });
+    const db = await getLobehubQueryClient();
+    await db.delete('sessions', { id: agentId });
+    await db.delete('agents', { id: agentId });
   };
 
   /**
@@ -253,16 +256,14 @@ class AgentService {
     limit?: number;
     offset?: number;
   }): Promise<AvailableAgentItem[]> => {
-    const client = await getPrestClient();
+    const db = await getLobehubQueryClient();
 
     const queryParams: Record<string, string | number | boolean> = {};
     if (params?.keyword) queryParams.keyword = params.keyword;
     if (params?.limit) queryParams.size = params.limit;
     if (params?.offset) queryParams.page = Math.floor(params.offset / (params.limit ?? 20)) + 1;
 
-    return client.query<AvailableAgentItem>('lobehub', 'agentsListWithStats', queryParams, {
-      camelCase: true,
-    });
+    return db.query<AvailableAgentItem>('lobehub', 'agentsListWithStats', queryParams);
   };
 
   /**
@@ -276,12 +277,13 @@ class AgentService {
       return lambdaClient.agent.countAgents.query(params);
     }
 
-    const client = await getPrestClient();
-    const rows = await client.select<{ count: number }>('lobehub', 'public', 'agents', {
+    const db = await getLobehubQueryClient();
+    const rows = await db.select('agents', {
       count: true,
       where: { virtual: false },
+      camelCase: false,
     });
-    const row = Array.isArray(rows) ? rows[0] : undefined;
+    const row = Array.isArray(rows) ? (rows[0] as { count: number } | undefined) : undefined;
     return row?.count ?? 0;
   };
 
@@ -291,8 +293,8 @@ class AgentService {
    * Tier 1 update on `agents.pinned`.
    */
   updateAgentPinned = async (agentId: string, pinned: boolean) => {
-    const client = await getPrestClient();
-    await client.update('lobehub', 'public', 'agents', { id: agentId }, { pinned });
+    const db = await getLobehubQueryClient();
+    await db.update('agents', { id: agentId }, { pinned });
   };
 
   /**

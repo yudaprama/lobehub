@@ -1,4 +1,4 @@
-import { getLobehubClient, getPrestClient } from '@/libs/prest/client';
+import { getLobehubQueryClient, getPrestClient } from '@/libs/prest/client';
 import { lambdaClient } from '@/libs/trpc/client';
 import { type CreateKnowledgeBaseParams } from '@/types/knowledgeBase';
 
@@ -19,7 +19,7 @@ interface KnowledgeBaseFileRow {
 
 class KnowledgeBaseService {
   createKnowledgeBase = async (params: CreateKnowledgeBaseParams) => {
-    const db = await getLobehubClient();
+    const db = await getLobehubQueryClient();
     const [row] = await db.insert('knowledge_bases', {
       id: (params as any).id ?? crypto.randomUUID(),
       name: params.name,
@@ -30,23 +30,25 @@ class KnowledgeBaseService {
   };
 
   getKnowledgeBaseList = async () => {
-    const db = await getLobehubClient();
+    const db = await getLobehubQueryClient();
     return db.select('knowledge_bases', {
       order: ['updated_at:desc'],
+      camelCase: false,
     });
   };
 
   getKnowledgeBaseById = async (id: string) => {
-    const db = await getLobehubClient();
+    const db = await getLobehubQueryClient();
     const [row] = await db.select('knowledge_bases', {
       where: { id },
       size: 1,
+      camelCase: false,
     });
     return row ?? null;
   };
 
   updateKnowledgeBaseList = async (id: string, value: any) => {
-    const db = await getLobehubClient();
+    const db = await getLobehubQueryClient();
     const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
     if (value?.name !== undefined) patch.name = value.name;
     if (value?.description !== undefined) patch.description = value.description;
@@ -56,7 +58,7 @@ class KnowledgeBaseService {
   };
 
   deleteKnowledgeBase = async (id: string) => {
-    const db = await getLobehubClient();
+    const db = await getLobehubQueryClient();
     await db.delete('knowledge_bases', { id });
   };
 
@@ -84,6 +86,8 @@ class KnowledgeBaseService {
    * Attach files to a knowledge base.
    * Tier 1 insertBatch into the `knowledge_base_files` junction. Each row
    * is auto-scoped by user_id via [[auth.user_id_filters]].
+   *
+   * Stays on raw PrestClient — LobehubClient doesn't expose insertBatch.
    */
   addFilesToKnowledgeBase = async (knowledgeBaseId: string, ids: string[]) => {
     if (ids.length === 0) return;
@@ -103,6 +107,8 @@ class KnowledgeBaseService {
   /**
    * Detach files from a knowledge base.
    * Tier 1 delete on `knowledge_base_files` scoped by KB id + file ids.
+   *
+   * Stays on raw PrestClient — matches the insertBatch above for symmetry.
    */
   removeFilesFromKnowledgeBase = async (knowledgeBaseId: string, ids: string[]) => {
     if (ids.length === 0) return;
