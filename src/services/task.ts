@@ -5,6 +5,26 @@ import { lambdaClient } from '@/libs/trpc/client';
 
 import { briefService } from './brief';
 
+/**
+ * Shape returned by the `taskCreate` stored query and by SELECT on the
+ * `tasks` table after SDK 0.7.0's auto-camelCase mapping. Declared here
+ * (rather than inferred) because the SDK's `query<T>()` default is `unknown`.
+ */
+export interface CreatedTask {
+  assigneeAgentId?: string | null;
+  assigneeUserId?: string | null;
+  automationMode?: TaskAutomationMode | null;
+  createdAt: string;
+  id: string;
+  identifier: string;
+  instruction: string;
+  name?: string | null;
+  parentTaskId?: string | null;
+  priority?: number | null;
+  status: TaskStatus;
+  updatedAt: string;
+}
+
 class TaskService {
   // ── Queries ──
 
@@ -124,7 +144,28 @@ class TaskService {
     priority?: number;
     schedulePattern?: string;
     scheduleTimezone?: string;
-  }) => lambdaClient.task.create.mutate(params);
+  }) => {
+    const client = await getPrestClient();
+    const query: Record<string, any> = {
+      instruction: params.instruction,
+      ...getWorkspaceParams(),
+    };
+    if (params.name) query.name = params.name;
+    if (params.description) query.description = params.description;
+    if (params.identifierPrefix) query.identifierPrefix = params.identifierPrefix;
+    if (params.assigneeAgentId) query.assigneeAgentId = params.assigneeAgentId;
+    if (params.assigneeUserId) query.assigneeUserId = params.assigneeUserId;
+    if (params.parentTaskId) query.parentTaskId = params.parentTaskId;
+    if (params.priority !== undefined) query.priority = params.priority;
+    if (params.automationMode) query.automationMode = params.automationMode;
+    if (params.schedulePattern) query.schedulePattern = params.schedulePattern;
+    if (params.scheduleTimezone) query.scheduleTimezone = params.scheduleTimezone;
+    if (params.createdByAgentId) query.createdByAgentId = params.createdByAgentId;
+    if (params.editorData) query.editorData = JSON.stringify(params.editorData);
+
+    const rows = await client.query<CreatedTask>('lobehub', 'taskCreate', query);
+    return { data: rows[0], message: 'Task created', success: true };
+  };
 
   update = async (
     id: string,
