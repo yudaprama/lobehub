@@ -135,6 +135,7 @@ export class TopicService {
     // The original lambdaClient path applies server-side status filtering; we
     // emulate it with `where: { status: { in: statuses } }` when provided.
     const rows = await client.select<TopicRow>('lobehub', 'public', 'topics', {
+      camelCase: true,
       order: ['updated_at:desc'],
       size: params?.pageSize ?? 20,
       ...(params?.statuses?.length ? { where: { status: { in: params.statuses } } } : {}),
@@ -199,11 +200,16 @@ export class TopicService {
         }) as any;
       }
 
-      const rows = await client.query<TopicRow & { rank: number }>('lobehub', 'topicsSearchFts', {
-        q: trimmed,
-        ...getWorkspaceParams(),
-        ...(agentId ? { agentId } : {}),
-      });
+      const rows = await client.query<TopicRow & { rank: number }>(
+        'lobehub',
+        'topicsSearchFts',
+        {
+          q: trimmed,
+          ...getWorkspaceParams(),
+          ...(agentId ? { agentId } : {}),
+        },
+        { camelCase: true },
+      );
       return rows as unknown as ChatTopic[];
     })();
   };
