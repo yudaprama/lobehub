@@ -1,9 +1,7 @@
 import { PrestClient } from 'prest-js-sdk';
-import { lobehubClient } from 'prest-js-sdk/lobehub';
+import { lobehubClient, type TableTypes } from 'prest-js-sdk/lobehub';
 
 import { fileEnv } from '@/envs/file';
-
-import type { LobehubTables } from './tables';
 
 const DEFAULT_PREST_URL = 'http://localhost:3000';
 const DEFAULT_KRATOS_URL = 'http://localhost:4433';
@@ -58,16 +56,22 @@ export function getPrestClient(): Promise<PrestClient> {
  *
  * Convenience wrapper that avoids repeating `'lobehub', 'public'` and
  * the generic type parameters on every call. Table columns are inferred
- * from `LobehubTables`.
+ * from the SDK's `TableTypes` (auto-generated from the Supabase schema).
+ *
+ * NOTE: `TypedPrestClient<TableTypes>` returns snake_case keys by
+ * default (matches Postgres column names). For auto-camelCased output
+ * that lines up with LobeHub's frontend types, prefer
+ * `getLobehubQueryClient()` which wraps `LobehubClient` — that class
+ * defaults `camelCase: true` and is typed with `CamelTableTypes`.
  *
  * @example
  *   const db = await getLobehubClient();
  *   const topics = await db.select('topics', { where: { agent_id: 'a1' } });
- *   // topics is LobehubTables['topics']['select'][]
+ *   // topics is TableTypes['topics']['select'][] (snake_case keys)
  */
 export async function getLobehubClient() {
   const client = await getPrestClient();
-  return client.forSchema<LobehubTables>('lobehub', 'public');
+  return client.forSchema<TableTypes>('lobehub', 'public');
 }
 
 export async function getLobehubQueryClient() {

@@ -231,9 +231,7 @@ cd packages/database && bunx vitest run --silent='passed-only' '[file]'
 
 ### Type Checking
 
-```bash
-bun run type-check
-```
+**NEVER run `bun run type-check` locally** — it is resource-intensive and handled by GitHub Actions CI. Only the CI pipeline should execute it.
 
 ### i18n
 
