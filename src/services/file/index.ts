@@ -2,7 +2,7 @@ import { CUSTOM_DOCUMENT_FILE_TYPE, DERIVED_DOCUMENT_SOURCE_TYPE } from '@lobech
 
 import { getAlistClient } from '@/libs/alist/client';
 import { egentFetch } from '@/libs/egent/client';
-import { getLobehubClient, getPrestClient, getWorkspaceParams } from '@/libs/prest/client';
+import { getLobehubQueryClient, getPrestClient, getWorkspaceParams } from '@/libs/prest/client';
 import {
   type CheckFileHashResult,
   type FileItem,
@@ -107,22 +107,32 @@ export class FileService {
       }
     }
 
-    const db = await getLobehubClient();
-    const [row] = await db.select('files', { where: { id }, size: 1 });
+    const db = await getLobehubQueryClient();
+    const [row] = await db.select('files', { where: { id }, size: 1, camelCase: false });
 
     if (!row) {
       throw new Error('file not found');
     }
 
+    const r = row as {
+      created_at: string;
+      file_type: string;
+      id: string;
+      name: string;
+      size: number;
+      source: unknown;
+      updated_at: string;
+      url: string;
+    };
     return {
-      createdAt: new Date(row.created_at),
-      id: row.id,
-      name: row.name,
-      size: row.size,
-      source: (row.source as any) ?? undefined,
-      type: row.file_type,
-      updatedAt: new Date(row.updated_at),
-      url: row.url,
+      createdAt: new Date(r.created_at),
+      id: r.id,
+      name: r.name,
+      size: r.size,
+      source: (r.source as any) ?? undefined,
+      type: r.file_type,
+      updatedAt: new Date(r.updated_at),
+      url: r.url,
     };
   };
 
@@ -175,7 +185,7 @@ export class FileService {
     if (client) {
       try {
         const listed = await client.list('/');
-        const paths = listed.data.content.filter((f) => !f.is_dir).map((f) => f.name);
+        const paths = listed.data.content.filter((f: any) => !f.is_dir).map((f: any) => f.name);
         if (paths.length > 0) {
           await client.remove(paths);
         }
@@ -185,8 +195,8 @@ export class FileService {
     }
 
     try {
-      const db = await getLobehubClient();
-      const rows = await db.select('files', { size: 10000 });
+      const db = await getLobehubQueryClient();
+      const rows = await db.select('files', { size: 10000, camelCase: false });
       if (rows.length > 0) {
         const ids = rows.map((r: any) => r.id);
         await egentFetch('/v1/files/remove', {
@@ -201,7 +211,7 @@ export class FileService {
   };
 
   getKnowledgeItems = async (params: QueryFileListParams): Promise<PaginatedFileList> => {
-    const client = await getPrestClient();
+    const db = await getLobehubQueryClient();
     const limit = params.limit ?? 50;
 
     const queryParams: Record<string, string | number | boolean> = {
@@ -217,11 +227,9 @@ export class FileService {
     if (params.sortType) queryParams.sortType = params.sortType;
     if (params.offset) queryParams.page = Math.floor(params.offset / limit) + 1;
 
-    const rawRows = await client.query<KnowledgeItemRow>(
-      'lobehub',
-      'knowledgeItemsList',
-      queryParams,
-    );
+    const rawRows = await db.query<KnowledgeItemRow>('lobehub', 'knowledgeItemsList', queryParams, {
+      camelCase: false,
+    });
 
     const hasMore = rawRows.length > limit;
     const rowsToProcess = hasMore ? rawRows.slice(0, limit) : rawRows;
@@ -233,23 +241,39 @@ export class FileService {
   getKnowledgeItemStatusesByIds = async (ids: string[]): Promise<KnowledgeItemStatus[]> => {
     if (ids.length === 0) return [];
 
-    const client = await getPrestClient();
-    const rows = await client.query<KnowledgeItemStatus>('lobehub', 'knowledgeItemStatuses', {
-      ids: [...new Set(ids)].join(','),
-      ...getWorkspaceParams(),
-    });
+    const db = await getLobehubQueryClient();
+    const rows = await db.query<KnowledgeItemStatus>(
+      'lobehub',
+      'knowledgeItemStatuses',
+      {
+        ids: [...new Set(ids)].join(','),
+        ...getWorkspaceParams(),
+      },
+      { camelCase: false },
+    );
     return rows;
   };
 
   resolveKnowledgeItemIds = async (params: QueryFileListParams) => {
-    const client = await getPrestClient();
-    const rows = (await client.query<{ id: string }>('lobehub', 'resolveKnowledgeItemIds', {
-      fileIds: (params as any).fileIds?.join(',') ?? '',
-    })) as Array<{ id: string }>;
+    const db = await getLobehubQueryClient();
+    const rows = (await db.query<{ id: string }>(
+      'lobehub',
+      'resolveKnowledgeItemIds',
+      {
+        fileIds: (params as any).fileIds?.join(',') ?? '',
+      },
+      { camelCase: false },
+    )) as Array<{ id: string }>;
     const ids = rows.map((r) => r.id);
     return { ids, total: ids.length };
   };
 
+  /**
+   * Delete knowledge items by file id list.
+   *
+   * Stays on raw PrestClient — `knowledge_items` isn't in the SDK's
+   * TableTypes (it's a view, not a base table).
+   */
   deleteKnowledgeItemsByQuery = async (params: QueryFileListParams) => {
     const client = await getPrestClient();
     const fileIds = (params as any).fileIds;
@@ -266,57 +290,88 @@ export class FileService {
     // Detect type based on ID prefix
     if (id.startsWith('docs_')) {
       // Document (including folders) - use pREST direct select
-      const db = await getLobehubClient();
-      const [doc] = await db.select('documents', { where: { id }, size: 1 });
+      const db = await getLobehubQueryClient();
+      const [doc] = await db.select('documents', { where: { id }, size: 1, camelCase: false });
       if (!doc) return null;
 
+      const d = doc as {
+        content: unknown;
+        created_at: string;
+        editor_data: unknown;
+        file_type: string;
+        filename: string | null;
+        id: string;
+        metadata: unknown;
+        parent_id: string | null;
+        slug: string | null;
+        source: string | null;
+        title: string | null;
+        total_char_count: number;
+        updated_at: string;
+      };
       // Convert document to FileListItem format
       return {
         chunkCount: null,
         chunkingError: null,
         chunkingStatus: null,
-        content: doc.content,
-        createdAt: doc.created_at ? new Date(doc.created_at) : new Date(),
-        editorData: doc.editor_data,
+        content: d.content,
+        createdAt: d.created_at ? new Date(d.created_at) : new Date(),
+        editorData: d.editor_data,
         embeddingError: null,
         embeddingStatus: null,
-        fileType: doc.file_type || CUSTOM_DOCUMENT_FILE_TYPE,
+        fileType: d.file_type || CUSTOM_DOCUMENT_FILE_TYPE,
         finishEmbedding: false,
-        id: doc.id,
-        metadata: doc.metadata,
-        name: doc.title || doc.filename || 'Untitled',
-        parentId: doc.parent_id,
-        size: doc.total_char_count || 0,
-        slug: doc.slug,
+        id: d.id,
+        metadata: d.metadata,
+        name: d.title || d.filename || 'Untitled',
+        parentId: d.parent_id,
+        size: d.total_char_count || 0,
+        slug: d.slug,
         sourceType: DERIVED_DOCUMENT_SOURCE_TYPE,
-        updatedAt: doc.updated_at ? new Date(doc.updated_at) : new Date(),
-        url: doc.source || '',
+        updatedAt: d.updated_at ? new Date(d.updated_at) : new Date(),
+        url: d.source || '',
       } as FileListItem;
     } else {
       // File - use pREST direct select
-      const db = await getLobehubClient();
-      const [row] = await db.select('files', { where: { id }, size: 1 });
+      const db = await getLobehubQueryClient();
+      const [row] = await db.select('files', { where: { id }, size: 1, camelCase: false });
       if (!row) return null;
 
+      const r = row as {
+        created_at: string;
+        embedding_task_id: string | null;
+        file_type: string;
+        id: string;
+        name: string;
+        size: number;
+        updated_at: string;
+        url: string;
+      };
       return {
         chunkCount: 0,
         chunkingError: null,
         chunkingStatus: null,
-        createdAt: new Date(row.created_at),
+        createdAt: new Date(r.created_at),
         embeddingError: null,
         embeddingStatus: null,
-        fileType: row.file_type,
-        finishEmbedding: row.embedding_task_id === null,
-        id: row.id,
-        name: row.name,
-        size: row.size,
+        fileType: r.file_type,
+        finishEmbedding: r.embedding_task_id === null,
+        id: r.id,
+        name: r.name,
+        size: r.size,
         sourceType: 'file' as const,
-        updatedAt: new Date(row.updated_at),
-        url: row.url,
+        updatedAt: new Date(r.updated_at),
+        url: r.url,
       } as FileListItem;
     }
   };
 
+  /**
+   * Folder breadcrumb lookup.
+   *
+   * Stays on raw PrestClient — the template returns `{ breadcrumb: any[] }`
+   * whose nested shape we don't want the SDK to transform.
+   */
   getFolderBreadcrumb = async (slug: string) => {
     const client = await getPrestClient();
     const rows = await client.query<{ breadcrumb: any[] }>('lobehub', 'documentFolderBreadcrumb', {
@@ -327,10 +382,11 @@ export class FileService {
 
   checkFileHash = async (hash: string): Promise<CheckFileHashResult> => {
     try {
-      const db = await getLobehubClient();
+      const db = await getLobehubQueryClient();
       const [row] = (await db.select('global_files', {
         where: { hash_id: hash },
         size: 1,
+        camelCase: false,
       })) as Array<{ file_type?: string; metadata?: any; size?: number; url: string }>;
       if (!row) return { isExist: false, metadata: null, url: '' };
       return {
@@ -347,11 +403,12 @@ export class FileService {
   };
 
   removeFileAsyncTask = async (id: string, type: 'embedding' | 'chunk') => {
-    const db = await getLobehubClient();
-    const [file] = await db.select('files', { where: { id }, size: 1 });
+    const db = await getLobehubQueryClient();
+    const [file] = await db.select('files', { where: { id }, size: 1, camelCase: false });
     if (!file) return;
 
-    const taskId = type === 'embedding' ? file.embedding_task_id : file.chunk_task_id;
+    const f = file as { chunk_task_id: string | null; embedding_task_id: string | null };
+    const taskId = type === 'embedding' ? f.embedding_task_id : f.chunk_task_id;
     if (!taskId) return;
 
     const nullField = type === 'embedding' ? 'embedding_task_id' : 'chunk_task_id';
@@ -377,7 +434,7 @@ export class FileService {
       }
     }
 
-    const db = await getLobehubClient();
+    const db = await getLobehubQueryClient();
     const updateData: Record<string, any> = {};
     if (data.name !== undefined) updateData.name = data.name;
     if (data.parentId !== undefined) updateData.parent_id = data.parentId;
