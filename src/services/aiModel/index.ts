@@ -18,7 +18,7 @@ export interface GetAiProviderModelListParams {
 export class AiModelService {
   createAiModel = async (params: CreateAiModelParams) => {
     const db = await getLobehubQueryClient();
-    return db.insert('ai_models', params);
+    return db.insert('ai_models', params as any);
   };
 
   getAiProviderModelList = async (

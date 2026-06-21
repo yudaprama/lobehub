@@ -37,7 +37,7 @@ export class SessionService {
       group_id: group === 'default' ? null : (group ?? null),
       pinned: session.pinned ?? false,
       metadata: { ...config, ...meta },
-    });
+    } as any);
     return id;
   };
 
@@ -71,7 +71,9 @@ export class SessionService {
       count: true,
       ...(Object.keys(where).length ? { where } : {}),
     });
-    const row = Array.isArray(rows) ? (rows[0] as { count: number } | undefined) : undefined;
+    const row = Array.isArray(rows)
+      ? (rows[0] as unknown as { count: number } | undefined)
+      : undefined;
     return row?.count ?? 0;
   };
 
