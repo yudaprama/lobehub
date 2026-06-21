@@ -260,7 +260,9 @@ class AgentService {
     if (params?.limit) queryParams.size = params.limit;
     if (params?.offset) queryParams.page = Math.floor(params.offset / (params.limit ?? 20)) + 1;
 
-    return client.query<AvailableAgentItem>('lobehub', 'agentsListWithStats', queryParams);
+    return client.query<AvailableAgentItem>('lobehub', 'agentsListWithStats', queryParams, {
+      camelCase: true,
+    });
   };
 
   /**

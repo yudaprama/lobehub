@@ -14,10 +14,15 @@ export class ThreadService {
     const client = await getPrestClient();
 
     // Tier 2 stored SQL template handles userId scoping + message subqueries.
-    return client.query<ThreadItem>('lobehub', 'threadMessages', {
-      topicId,
-      ...getWorkspaceParams(),
-    });
+    return client.query<ThreadItem>(
+      'lobehub',
+      'threadMessages',
+      {
+        topicId,
+        ...getWorkspaceParams(),
+      },
+      { camelCase: true },
+    );
   };
 
   createThreadWithMessage = async ({
