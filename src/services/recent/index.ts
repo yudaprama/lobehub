@@ -1,4 +1,5 @@
 import type { TaskStatus } from '@lobechat/types';
+import type { RecentItem as PrestRecentItem } from 'prest-js-sdk/lobehub';
 
 import { SESSION_CHAT_TOPIC_URL } from '@/const/url';
 import { getLobehubQueryClient } from '@/libs/prest/client';
@@ -19,30 +20,15 @@ export interface RecentItem {
 }
 
 /**
- * Row shape returned by `LobehubClient.recentByUser` (camelCased by the SDK
- * at the pREST boundary since prest-js-sdk 0.7.0). Declared locally instead
- * of derived from the SDK's `RecentItem` to keep tsgo module-resolution
- * independent of the symlinked SDK dist.
- */
-interface RecentQueryRow {
-  id: string;
-  metadata: ChatTopicMetadata | null;
-  routeGroupId: string | null;
-  routeId: string | null;
-  status: TaskStatus | null;
-  title: string;
-  type: 'topic' | 'document' | 'task';
-  updatedAt: string;
-}
-
-/**
- * Map an SDK row (already camelCased at the pREST boundary) to the UI shape.
+ * Map an SDK row (already camelCased at the pREST boundary by SDK 0.8.0's
+ * LobehubClient + CamelTableTypes) to the UI shape. The mapper only handles
+ * URL building and Date parsing — no manual snake→camel mapping.
  *
- * The SDK renames top-level keys (`route_group_id` → `routeGroupId`,
- * `route_id` → `routeId`, `updated_at` → `updatedAt`), so this mapper only
- * handles URL building and Date parsing — no manual snake→camel mapping.
+ * The SDK's `RecentItem` has `metadata: Record<string, unknown> | null` —
+ * we narrow it to `ChatTopicMetadata` at the call site since the consumer
+ * knows the concrete shape.
  */
-const toRecentItem = (item: RecentQueryRow): RecentItem => {
+const toRecentItem = (item: PrestRecentItem): RecentItem => {
   let routePath: string;
 
   switch (item.type) {
@@ -70,9 +56,9 @@ const toRecentItem = (item: RecentQueryRow): RecentItem => {
     agentId: item.routeId,
     icon: item.type,
     id: item.id,
-    metadata: item.metadata ?? undefined,
+    metadata: (item.metadata as ChatTopicMetadata | null) ?? undefined,
     routePath,
-    status: item.status ?? null,
+    status: (item.status as TaskStatus | null) ?? null,
     title: item.title,
     type: item.type,
     updatedAt: new Date(item.updatedAt),
@@ -82,11 +68,12 @@ const toRecentItem = (item: RecentQueryRow): RecentItem => {
 class RecentService {
   getAll = async (limit?: number): Promise<RecentItem[]> => {
     const db = await getLobehubQueryClient();
-    // LobehubClient.recentByUser camelCases by default (SDK 0.7.0+).
-    const rows = (await db.recentByUser({
+    // LobehubClient.recentByUser returns RecentItem[] directly (typed via
+    // CamelTableTypes in SDK 0.8.0+).
+    const rows = await db.recentByUser({
       limit: limit ?? 10,
       ...getWorkspaceParams(),
-    })) as unknown as RecentQueryRow[];
+    });
 
     return rows.map(toRecentItem);
   };
