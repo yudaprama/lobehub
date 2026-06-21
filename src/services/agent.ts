@@ -129,6 +129,7 @@ class AgentService {
 
     await db.insert('sessions', {
       id: agentId,
+      slug: agentId,
       type: 'agent',
       group_id: params.groupId === 'default' ? null : (params.groupId ?? null),
       metadata: normalizedConfig as unknown as Record<string, unknown>,

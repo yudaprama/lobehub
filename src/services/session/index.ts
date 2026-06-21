@@ -32,6 +32,7 @@ export class SessionService {
     const { config, group, meta, ...session } = data;
     await db.insert('sessions', {
       id,
+      slug: id,
       title: (meta as any)?.title ?? null,
       type,
       group_id: group === 'default' ? null : (group ?? null),
