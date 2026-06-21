@@ -108,30 +108,30 @@ export class FileService {
     }
 
     const db = await getLobehubQueryClient();
-    const [row] = await db.select('files', { where: { id }, size: 1, camelCase: false });
+    const [row] = await db.select('files', { where: { id }, size: 1 });
 
     if (!row) {
       throw new Error('file not found');
     }
 
     const r = row as {
-      created_at: string;
-      file_type: string;
+      createdAt: string;
+      fileType: string;
       id: string;
       name: string;
       size: number;
       source: unknown;
-      updated_at: string;
+      updatedAt: string;
       url: string;
     };
     return {
-      createdAt: new Date(r.created_at),
+      createdAt: new Date(r.createdAt),
       id: r.id,
       name: r.name,
       size: r.size,
       source: (r.source as any) ?? undefined,
-      type: r.file_type,
-      updatedAt: new Date(r.updated_at),
+      type: r.fileType,
+      updatedAt: new Date(r.updatedAt),
       url: r.url,
     };
   };
@@ -291,23 +291,23 @@ export class FileService {
     if (id.startsWith('docs_')) {
       // Document (including folders) - use pREST direct select
       const db = await getLobehubQueryClient();
-      const [doc] = await db.select('documents', { where: { id }, size: 1, camelCase: false });
+      const [doc] = await db.select('documents', { where: { id }, size: 1 });
       if (!doc) return null;
 
       const d = doc as {
         content: unknown;
-        created_at: string;
-        editor_data: unknown;
-        file_type: string;
+        createdAt: string;
+        editorData: unknown;
+        fileType: string;
         filename: string | null;
         id: string;
         metadata: unknown;
-        parent_id: string | null;
+        parentId: string | null;
         slug: string | null;
         source: string | null;
         title: string | null;
-        total_char_count: number;
-        updated_at: string;
+        totalCharCount: number;
+        updatedAt: string;
       };
       // Convert document to FileListItem format
       return {
@@ -315,52 +315,52 @@ export class FileService {
         chunkingError: null,
         chunkingStatus: null,
         content: d.content,
-        createdAt: d.created_at ? new Date(d.created_at) : new Date(),
-        editorData: d.editor_data,
+        createdAt: d.createdAt ? new Date(d.createdAt) : new Date(),
+        editorData: d.editorData,
         embeddingError: null,
         embeddingStatus: null,
-        fileType: d.file_type || CUSTOM_DOCUMENT_FILE_TYPE,
+        fileType: d.fileType || CUSTOM_DOCUMENT_FILE_TYPE,
         finishEmbedding: false,
         id: d.id,
         metadata: d.metadata,
         name: d.title || d.filename || 'Untitled',
-        parentId: d.parent_id,
-        size: d.total_char_count || 0,
+        parentId: d.parentId,
+        size: d.totalCharCount || 0,
         slug: d.slug,
         sourceType: DERIVED_DOCUMENT_SOURCE_TYPE,
-        updatedAt: d.updated_at ? new Date(d.updated_at) : new Date(),
+        updatedAt: d.updatedAt ? new Date(d.updatedAt) : new Date(),
         url: d.source || '',
       } as FileListItem;
     } else {
       // File - use pREST direct select
       const db = await getLobehubQueryClient();
-      const [row] = await db.select('files', { where: { id }, size: 1, camelCase: false });
+      const [row] = await db.select('files', { where: { id }, size: 1 });
       if (!row) return null;
 
       const r = row as {
-        created_at: string;
-        embedding_task_id: string | null;
-        file_type: string;
+        createdAt: string;
+        embeddingTaskId: string | null;
+        fileType: string;
         id: string;
         name: string;
         size: number;
-        updated_at: string;
+        updatedAt: string;
         url: string;
       };
       return {
         chunkCount: 0,
         chunkingError: null,
         chunkingStatus: null,
-        createdAt: new Date(r.created_at),
+        createdAt: new Date(r.createdAt),
         embeddingError: null,
         embeddingStatus: null,
-        fileType: r.file_type,
-        finishEmbedding: r.embedding_task_id === null,
+        fileType: r.fileType,
+        finishEmbedding: r.embeddingTaskId === null,
         id: r.id,
         name: r.name,
         size: r.size,
         sourceType: 'file' as const,
-        updatedAt: new Date(r.updated_at),
+        updatedAt: new Date(r.updatedAt),
         url: r.url,
       } as FileListItem;
     }
@@ -386,13 +386,12 @@ export class FileService {
       const [row] = (await db.select('global_files', {
         where: { hash_id: hash },
         size: 1,
-        camelCase: false,
-      })) as Array<{ file_type?: string; metadata?: any; size?: number; url: string }>;
+      })) as Array<{ fileType?: string; metadata?: any; size?: number; url: string }>;
       if (!row) return { isExist: false, metadata: null, url: '' };
       return {
         isExist: true,
         url: row.url,
-        fileType: row.file_type,
+        fileType: row.fileType,
         size: row.size,
         metadata: row.metadata,
       } as CheckFileHashResult;
@@ -404,15 +403,15 @@ export class FileService {
 
   removeFileAsyncTask = async (id: string, type: 'embedding' | 'chunk') => {
     const db = await getLobehubQueryClient();
-    const [file] = await db.select('files', { where: { id }, size: 1, camelCase: false });
+    const [file] = await db.select('files', { where: { id }, size: 1 });
     if (!file) return;
 
-    const f = file as { chunk_task_id: string | null; embedding_task_id: string | null };
-    const taskId = type === 'embedding' ? f.embedding_task_id : f.chunk_task_id;
+    const f = file as { chunkTaskId: string | null; embeddingTaskId: string | null };
+    const taskId = type === 'embedding' ? f.embeddingTaskId : f.chunkTaskId;
     if (!taskId) return;
 
-    const nullField = type === 'embedding' ? 'embedding_task_id' : 'chunk_task_id';
-    await db.update('files', { id }, { [nullField]: null });
+    const nullField = type === 'embedding' ? 'embeddingTaskId' : 'chunkTaskId';
+    await db.update('files', { id }, { [nullField]: null } as any);
     await db.delete('async_tasks', { id: taskId });
   };
 

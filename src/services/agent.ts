@@ -107,10 +107,12 @@ class AgentService {
    * Create a new agent with session.
    * Automatically normalizes market agent config (handles model as object).
    *
-   * `as any` on both inserts: agents + sessions inserts pass snake_case
-   * fields (session_group_id, group_id, metadata) whose shapes don't
-   * match the SDK's AgentsInput / SessionsInput — those are pre-existing
-   * structural mismatches unrelated to the user_id fix.
+   * The agents insert casts the whole payload as any because
+   * `session_group_id` isn't in the SDK's AgentsInput — structural
+   * mismatch between the service's groupId param and the schema's
+   * column set. The sessions insert's `metadata: normalizedConfig`
+   * narrows PartialDeep<AgentItem> to Json (Record<string, unknown>),
+   * which is a real type conversion, not a hack.
    */
   createAgent = async (params: CreateAgentParams): Promise<CreateAgentResult> => {
     const normalizedConfig = normalizeMarketAgentModel(params.config);
@@ -119,11 +121,11 @@ class AgentService {
 
     await db.insert('agents', {
       id: agentId,
-      title: (normalizedConfig as any)?.title ?? null,
-      avatar: (normalizedConfig as any)?.avatar ?? null,
-      description: (normalizedConfig as any)?.description ?? null,
-      tags: (normalizedConfig as any)?.tags ?? null,
-      model: (normalizedConfig as any)?.model ?? null,
+      title: normalizedConfig?.title ?? null,
+      avatar: normalizedConfig?.avatar ?? null,
+      description: normalizedConfig?.description ?? null,
+      tags: normalizedConfig?.tags ?? null,
+      model: normalizedConfig?.model ?? null,
       session_group_id: params.groupId ?? null,
       virtual: false,
     } as any);
@@ -132,7 +134,7 @@ class AgentService {
       id: agentId,
       type: 'agent',
       group_id: params.groupId === 'default' ? null : (params.groupId ?? null),
-      metadata: normalizedConfig as any,
+      metadata: normalizedConfig as unknown as Record<string, unknown>,
     } as any);
 
     return { agentId };
@@ -149,11 +151,11 @@ class AgentService {
 
     await db.insert('agents', {
       id: agentId,
-      title: (normalizedConfig as any)?.title ?? null,
-      avatar: (normalizedConfig as any)?.avatar ?? null,
-      description: (normalizedConfig as any)?.description ?? null,
-      tags: (normalizedConfig as any)?.tags ?? null,
-      model: (normalizedConfig as any)?.model ?? null,
+      title: normalizedConfig?.title ?? null,
+      avatar: normalizedConfig?.avatar ?? null,
+      description: normalizedConfig?.description ?? null,
+      tags: normalizedConfig?.tags ?? null,
+      model: normalizedConfig?.model ?? null,
       session_group_id: params.groupId ?? null,
       virtual: true,
     } as any);
@@ -218,7 +220,10 @@ class AgentService {
     await db.update(
       'sessions',
       { id: agentId },
-      { metadata: config as any, updated_at: new Date().toISOString() },
+      {
+        metadata: config as unknown as Record<string, unknown>,
+        updated_at: new Date().toISOString(),
+      },
     );
     return { success: true } as { agent?: any; success: boolean };
   };
@@ -281,7 +286,6 @@ class AgentService {
     const rows = await db.select('agents', {
       count: true,
       where: { virtual: false },
-      camelCase: false,
     });
     const row = Array.isArray(rows) ? (rows[0] as { count: number } | undefined) : undefined;
     return row?.count ?? 0;

@@ -37,7 +37,7 @@ export class ThreadService {
   createThread = async (params: CreateThreadParams): Promise<string> => {
     const db = await getLobehubQueryClient();
 
-    const [row] = await db.insert<{ id: string }>('threads', {
+    const [row] = await db.insert('threads', {
       id: params.id ?? crypto.randomUUID(),
       title: params.title ?? null,
       topic_id: params.topicId,
@@ -52,8 +52,8 @@ export class ThreadService {
       metadata: params.metadata ?? null,
       last_active_at: new Date().toISOString(),
       accessed_at: new Date().toISOString(),
-    });
-    return row.id;
+    } as any);
+    return (row as { id: string })?.id;
   };
 
   updateThread = async (id: string, data: Partial<ThreadItem>) => {

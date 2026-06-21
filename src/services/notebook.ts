@@ -97,7 +97,6 @@ class NotebookService {
     const docIds = links.map((l: any) => l.document_id);
     return db.select('documents', {
       where: { id: { in: docIds }, ...(params.type ? { type: params.type } : {}) },
-      camelCase: false,
     });
   };
 

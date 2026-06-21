@@ -12,15 +12,15 @@ export interface InstallPluginParams {
 }
 
 interface InstalledPluginRow {
-  created_at: string;
-  custom_params: Record<string, any> | null;
+  createdAt: string;
+  customParams: Record<string, any> | null;
   identifier: string;
   manifest: ToolManifest | null;
   settings: Record<string, any> | null;
   source: string | null;
   type: 'plugin' | 'customPlugin';
-  updated_at: string;
-  user_id: string;
+  updatedAt: string;
+  userId: string;
 }
 
 const toLobeTool = (row: InstalledPluginRow): LobeTool => ({
@@ -36,18 +36,13 @@ export class PluginService {
     const existing = await db.select('user_installed_plugins', {
       where: { identifier: (plugin as any).identifier },
       size: 1,
-      camelCase: false,
     });
     if (existing.length > 0) {
-      await db.update(
-        'user_installed_plugins',
-        { identifier: (plugin as any).identifier },
-        {
-          custom_params: plugin.customParams,
-          manifest: plugin.manifest,
-          settings: plugin.settings,
-        },
-      );
+      await db.update('user_installed_plugins', { identifier: (plugin as any).identifier }, {
+        custom_params: plugin.customParams,
+        manifest: plugin.manifest,
+        settings: plugin.settings,
+      } as any);
     } else {
       await db.insert('user_installed_plugins', {
         custom_params: plugin.customParams,
@@ -55,7 +50,7 @@ export class PluginService {
         manifest: plugin.manifest,
         settings: plugin.settings,
         type: plugin.type,
-      });
+      } as any);
     }
   };
 
@@ -64,10 +59,9 @@ export class PluginService {
     const rows = await db.select('user_installed_plugins', {
       order: ['updated_at:desc'],
       size: 100,
-      camelCase: false,
     });
 
-    return (Array.isArray(rows) ? (rows as InstalledPluginRow[]) : []).map(toLobeTool);
+    return (Array.isArray(rows) ? (rows as unknown as InstalledPluginRow[]) : []).map(toLobeTool);
   };
 
   uninstallPlugin = async (identifier: string): Promise<void> => {
@@ -88,20 +82,16 @@ export class PluginService {
 
   updatePlugin = async (id: string, value: Partial<LobeToolCustomPlugin>): Promise<void> => {
     const db = await getLobehubQueryClient();
-    await db.update(
-      'user_installed_plugins',
-      { identifier: id },
-      {
-        custom_params: value.customParams,
-        manifest: value.manifest,
-        settings: value.settings,
-      },
-    );
+    await db.update('user_installed_plugins', { identifier: id }, {
+      custom_params: value.customParams,
+      manifest: value.manifest,
+      settings: value.settings,
+    } as any);
   };
 
   updatePluginManifest = async (id: string, manifest: ToolManifest): Promise<void> => {
     const db = await getLobehubQueryClient();
-    await db.update('user_installed_plugins', { identifier: id }, { manifest });
+    await db.update('user_installed_plugins', { identifier: id }, { manifest } as any);
   };
 
   removeAllPlugins = async (): Promise<void> => {
@@ -115,7 +105,7 @@ export class PluginService {
     _signal?: AbortSignal,
   ): Promise<void> => {
     const db = await getLobehubQueryClient();
-    await db.update('user_installed_plugins', { identifier: id }, { settings });
+    await db.update('user_installed_plugins', { identifier: id }, { settings } as any);
   };
 }
 

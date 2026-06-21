@@ -253,7 +253,7 @@ class TaskService {
       content,
     };
     if (opts?.topicId) row.topic_id = opts.topicId;
-    await db.insert('task_comments', row);
+    await db.insert('task_comments', row as any);
   };
 
   deleteComment = async (commentId: string) => {

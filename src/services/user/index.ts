@@ -22,16 +22,16 @@ export class UserService {
     updatedAt: string;
   }> => {
     const db = await getLobehubQueryClient();
-    const rows = await db.select('users', { size: 1, camelCase: false });
+    const rows = await db.select('users', { size: 1 });
     const row = Array.isArray(rows)
-      ? (rows[0] as { created_at: string; updated_at: string } | undefined)
+      ? (rows[0] as { createdAt: string; updatedAt: string } | undefined)
       : undefined;
     if (!row) {
       return { createdAt: '', duration: 0, updatedAt: '' };
     }
-    const createdAt = new Date(row.created_at);
+    const createdAt = new Date(row.createdAt);
     const duration = Date.now() - createdAt.getTime();
-    return { createdAt: row.created_at, duration, updatedAt: row.updated_at };
+    return { createdAt: row.createdAt, duration, updatedAt: row.updatedAt };
   };
 
   getUserState = async (): Promise<UserInitializationState> => {
@@ -117,12 +117,12 @@ export class UserService {
 
   updateInterests = async (interests: string[]) => {
     const db = await getLobehubQueryClient();
-    await db.update('user_settings', {}, { interests });
+    await db.update('user_settings', {}, { interests } as any);
   };
 
   updateFullName = async (fullName: string) => {
     const db = await getLobehubQueryClient();
-    await db.update('users', {}, { full_name: fullName });
+    await db.update('users', {}, { full_name: fullName } as any);
   };
 
   updateUsername = async (username: string) => {
@@ -139,7 +139,7 @@ export class UserService {
    */
   updatePreference = async (preference: Partial<UserPreference>) => {
     const db = await getLobehubQueryClient();
-    await db.update('user_settings', {}, { preference });
+    await db.update('user_settings', {}, { preference } as any);
   };
 
   /**
@@ -149,7 +149,7 @@ export class UserService {
    */
   updateGuide = async (guide: Partial<UserGuide>) => {
     const db = await getLobehubQueryClient();
-    await db.update('user_settings', {}, { guide });
+    await db.update('user_settings', {}, { guide } as any);
   };
 
   /**
@@ -164,7 +164,7 @@ export class UserService {
 
   resetUserSettings = async () => {
     const db = await getLobehubQueryClient();
-    await db.update('user_settings', {}, { settings: {} });
+    await db.update('user_settings', {}, { settings: {} } as any);
   };
 }
 

@@ -70,7 +70,6 @@ export class SessionService {
     const rows = await db.select('sessions', {
       count: true,
       ...(Object.keys(where).length ? { where } : {}),
-      camelCase: false,
     });
     const row = Array.isArray(rows) ? (rows[0] as { count: number } | undefined) : undefined;
     return row?.count ?? 0;

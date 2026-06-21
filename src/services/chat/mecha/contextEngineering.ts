@@ -349,11 +349,11 @@ export const contextEngineering = async ({
         const plan = {
           completed: false,
           context: planDoc.content ?? undefined,
-          createdAt: planDoc.created_at,
+          createdAt: planDoc.createdAt,
           description: planDoc.description || '',
           goal: planDoc.title || '',
           id: planDoc.id,
-          updatedAt: planDoc.updated_at,
+          updatedAt: planDoc.updatedAt,
         };
 
         // Get todos from plan's metadata

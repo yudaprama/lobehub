@@ -16,7 +16,7 @@ export class AiProviderService {
 
   getAiProviderList = async () => {
     const db = await getLobehubQueryClient();
-    return db.select('ai_providers', { order: ['sort:asc'], camelCase: false });
+    return db.select('ai_providers', { order: ['sort:asc'] }) as unknown as AiProviderDetailItem[];
   };
 
   getAiProviderById = async (id: string): Promise<AiProviderDetailItem | undefined> => {
@@ -24,9 +24,8 @@ export class AiProviderService {
     const [provider] = await db.select('ai_providers', {
       where: { id },
       size: 1,
-      camelCase: false,
     });
-    return provider as AiProviderDetailItem | undefined;
+    return provider as unknown as AiProviderDetailItem | undefined;
   };
 
   toggleProviderEnabled = async (id: string, enabled: boolean) => {
