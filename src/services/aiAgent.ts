@@ -1,8 +1,10 @@
+import type { AgentStreamEvent } from '@lobechat/agent-gateway-client';
 import type { ExecAgentAppContext, ExecAgentResult } from '@lobechat/types';
 
 import { lambdaClient } from '@/libs/trpc/client';
 
 export type { ExecAgentResult };
+export type { AgentStreamEvent };
 
 /**
  * Resume instruction for an operation that hit `human_approve_required`. When
@@ -132,6 +134,77 @@ class AiAgentService {
     options?: { signal?: AbortSignal },
   ): Promise<ExecAgentResult> {
     return await lambdaClient.aiAgent.execAgent.mutate(params, options);
+  }
+
+  /**
+   * Execute an agent via the Go backend (egent-lobehub) directly.
+   * Bypasses the Node.js tRPC router — calls POST /v1/agent/exec with
+   * SSE streaming. Returns an AsyncIterable of AgentStreamEvent for
+   * the caller to consume.
+   *
+   * Requires NEXT_PUBLIC_AGENT_URL env var (e.g. https://agent.getkawai.com).
+   */
+  async *execAgentViaGo(
+    params: {
+      agentId: string;
+      model?: string;
+      prompt: string;
+      provider?: string;
+      workspaceId?: string;
+    },
+    options?: { signal?: AbortSignal },
+  ): AsyncGenerator<AgentStreamEvent> {
+    const agentUrl =
+      (typeof process !== 'undefined' && process.env?.NEXT_PUBLIC_AGENT_URL) ||
+      'http://localhost:10531';
+
+    const res = await fetch(`${agentUrl}/v1/agent/exec`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        agentId: params.agentId,
+        model: params.model,
+        prompt: params.prompt,
+        provider: params.provider,
+        stream: true,
+        workspaceId: params.workspaceId,
+      }),
+      signal: options?.signal,
+    });
+
+    if (!res.ok) {
+      throw new Error(`agent exec failed: ${res.status} ${res.statusText}`);
+    }
+    if (!res.body) {
+      throw new Error('agent exec: no response body');
+    }
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() ?? '';
+
+      for (const line of lines) {
+        if (line.startsWith('data: ')) {
+          try {
+            const event = JSON.parse(line.slice(6)) as AgentStreamEvent;
+            yield event;
+            if (event.type === 'agent_runtime_end' || event.type === 'error') {
+              return;
+            }
+          } catch {
+            // Skip malformed SSE data lines
+          }
+        }
+      }
+    }
   }
 
   /**

@@ -3,7 +3,6 @@ import { CUSTOM_DOCUMENT_FILE_TYPE, DERIVED_DOCUMENT_SOURCE_TYPE } from '@lobech
 import { getAlistClient } from '@/libs/alist/client';
 import { egentFetch } from '@/libs/egent/client';
 import { getLobehubClient, getPrestClient, getWorkspaceParams } from '@/libs/prest/client';
-import { lambdaClient } from '@/libs/trpc/client';
 import {
   type CheckFileHashResult,
   type FileItem,
@@ -11,7 +10,6 @@ import {
   type KnowledgeItemStatus,
   type PaginatedFileList,
   type QueryFileListParams,
-  type QueryFileListSchemaType,
   type UploadFileParams,
 } from '@/types/files';
 
@@ -244,11 +242,22 @@ export class FileService {
   };
 
   resolveKnowledgeItemIds = async (params: QueryFileListParams) => {
-    return lambdaClient.file.resolveKnowledgeItemIds.query(params as QueryFileListSchemaType);
+    const client = await getPrestClient();
+    const rows = (await client.query<{ id: string }>('lobehub', 'resolveKnowledgeItemIds', {
+      fileIds: (params as any).fileIds?.join(',') ?? '',
+    })) as Array<{ id: string }>;
+    const ids = rows.map((r) => r.id);
+    return { ids, total: ids.length };
   };
 
   deleteKnowledgeItemsByQuery = async (params: QueryFileListParams) => {
-    return lambdaClient.file.deleteKnowledgeItemsByQuery.mutate(params as QueryFileListSchemaType);
+    const client = await getPrestClient();
+    const fileIds = (params as any).fileIds;
+    if (!fileIds?.length) return { count: 0 };
+    const deleted = await client.delete('lobehub', 'public', 'knowledge_items', {
+      file_id: { in: fileIds },
+    });
+    return { count: Array.isArray(deleted) ? deleted.length : 0 };
   };
 
   // V2.0 Migrate from getFileItem to getKnowledgeItem
@@ -309,7 +318,11 @@ export class FileService {
   };
 
   getFolderBreadcrumb = async (slug: string) => {
-    return lambdaClient.document.getFolderBreadcrumb.query({ slug });
+    const client = await getPrestClient();
+    const rows = await client.query<{ breadcrumb: any[] }>('lobehub', 'documentFolderBreadcrumb', {
+      slug,
+    });
+    return rows[0]?.breadcrumb ?? [];
   };
 
   checkFileHash = async (hash: string): Promise<CheckFileHashResult> => {

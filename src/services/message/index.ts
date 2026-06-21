@@ -101,19 +101,31 @@ export class MessageService {
     range?: [string, string];
     startDate?: string;
   }): Promise<number> => {
-    return lambdaClient.message.countWords.query(params);
+    const client = await getPrestClient();
+    const query: Record<string, string> = {};
+    if (params?.startDate) query.startDate = params.startDate;
+    if (params?.endDate) query.endDate = params.endDate;
+    if (params?.range) {
+      query.startDate = params.range[0];
+      query.endDate = params.range[1];
+    }
+    const rows = await client.query<{ count: number }>('lobehub', 'messageWordCount', query);
+    return rows[0]?.count ?? 0;
   };
 
   rankModels = async (): Promise<ModelRankItem[]> => {
-    return lambdaClient.message.rankModels.query();
+    const client = await getPrestClient();
+    return client.query<ModelRankItem>('lobehub', 'messageModelRank', {});
   };
 
   getHeatmaps = async (): Promise<HeatmapsProps['data']> => {
-    return lambdaClient.message.getHeatmaps.query();
+    const client = await getPrestClient();
+    return client.query<HeatmapsProps['data'][number]>('lobehub', 'messageHeatmaps', {});
   };
 
   getTokenHeatmaps = async (): Promise<HeatmapsProps['data']> => {
-    return lambdaClient.message.getTokenHeatmaps.query();
+    const client = await getPrestClient();
+    return client.query<HeatmapsProps['data'][number]>('lobehub', 'messageTokenHeatmaps', {});
   };
 
   updateMessageError = async (
@@ -317,7 +329,18 @@ export class MessageService {
     value: Partial<Omit<MessagePluginItem, 'id'>>,
     ctx?: MessageQueryContext,
   ): Promise<UpdateMessageResult> => {
-    return lambdaClient.message.updateMessagePlugin.mutate({ ...ctx, id, value });
+    const client = await getPrestClient();
+    await client.update(
+      'lobehub',
+      'public',
+      'messages',
+      { id },
+      {
+        plugin: value as any,
+        updated_at: new Date().toISOString(),
+      },
+    );
+    return { success: true };
   };
 
   updateMessageRAG = async (
@@ -423,10 +446,14 @@ export class MessageService {
     fileIds: string[],
     ctx?: MessageQueryContext,
   ): Promise<UpdateMessageResult> => {
-    // Inserts into the `messages_files` junction table — `messages_files` is
-    // not yet in [[auth.user_id_filters]]. BFF does the join with the
-    // message_id and re-validates file ownership.
-    return lambdaClient.message.addFilesToMessage.mutate({ ...ctx, fileIds, id });
+    const client = await getPrestClient();
+    await client.insertBatch(
+      'lobehub',
+      'public',
+      'messages_files',
+      fileIds.map((fileId) => ({ message_id: id, file_id: fileId })),
+    );
+    return { success: true };
   };
 
   // =============== Compression ===============

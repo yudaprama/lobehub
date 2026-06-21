@@ -213,9 +213,9 @@ Open this URL to develop locally against the production backend (app.lobehub.com
 
 ### Package Management
 
-- `pnpm` for dependency management
-- `bun` to run npm scripts
+- `bun` for everything (install, add, remove, run scripts)
 - `bunx` for executable npm packages
+- **NEVER run `bun run build`, `bun run build:spa`, or similar build commands** — these are resource-intensive and slow locally. Let CI handle builds.
 
 ### Testing
 
@@ -239,8 +239,8 @@ bun run type-check
 
 - Add keys to a namespace file under `src/locales/default/` (e.g. `agent.ts`, `auth.ts`)
 - Ship en-US and zh-CN by hand in the same PR: write the English source in `src/locales/default/*.ts` and mirror it to `locales/en-US/`; hand-translate `locales/zh-CN/`. Leave all other locales to CI.
-- Don't run `pnpm i18n` manually by default — a daily CI workflow (`auto-i18n.yml`) runs it and opens an automated translation PR for any missing keys.
-- Run `pnpm i18n` manually only when your branch needs the translated locales immediately, instead of waiting for the daily job (slow; requires `OPENAI_API_KEY`). Note it only fills keys missing from other locales — value-only edits never need it.
+- Don't run `bun run i18n` manually by default — a daily CI workflow (`auto-i18n.yml`) runs it and opens an automated translation PR for any missing keys.
+- Run `bun run i18n` manually only when your branch needs the translated locales immediately, instead of waiting for the daily job (slow; requires `OPENAI_API_KEY`). Note it only fills keys missing from other locales — value-only edits never need it.
 
 ### Code Style
 

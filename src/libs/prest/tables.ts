@@ -690,26 +690,100 @@ export interface LobehubTables extends TableMap {
       id: string;
       task_id: string;
       content: string;
+      topic_id: string | null;
       created_at: string;
       updated_at: string;
     };
-    input: { id: string; task_id: string; content: string };
+    input: { task_id: string; content: string; topic_id?: string };
   };
   task_dependencies: {
-    select: { id: string; task_id: string; depends_on_task_id: string; created_at: string };
-    input: { id: string; task_id: string; depends_on_task_id: string };
+    select: {
+      id: string;
+      task_id: string;
+      depends_on_id: string;
+      type: string;
+      workspace_id: string | null;
+      created_at: string;
+    };
+    input: { task_id: string; depends_on_id: string; type: string; workspace_id?: string };
   };
   task_documents: {
-    select: { id: string; task_id: string; document_id: string; created_at: string };
-    input: { id: string; task_id: string; document_id: string };
+    select: {
+      id: string;
+      task_id: string;
+      document_id: string;
+      pinned_by: string;
+      workspace_id: string | null;
+      created_at: string;
+    };
+    input: { task_id: string; document_id: string; pinned_by?: string; workspace_id?: string };
   };
   task_topics: {
-    select: { id: string; task_id: string; topic_id: string; created_at: string };
-    input: { id: string; task_id: string; topic_id: string };
+    select: {
+      id: string;
+      task_id: string;
+      topic_id: string;
+      status: string | null;
+      created_at: string;
+    };
+    input: { task_id: string; topic_id: string; status?: string };
   };
   tasks: {
-    select: { id: string; name: string; status: string; created_at: string; updated_at: string };
-    input: { id: string; name: string; status: string };
+    select: {
+      id: string;
+      identifier: string;
+      seq: number;
+      name: string | null;
+      description: string | null;
+      instruction: string;
+      editor_data: Record<string, unknown> | null;
+      status: string;
+      priority: number | null;
+      sort_order: number | null;
+      parent_task_id: string | null;
+      assignee_user_id: string | null;
+      assignee_agent_id: string | null;
+      created_by_user_id: string;
+      created_by_agent_id: string | null;
+      workspace_id: string | null;
+      automation_mode: string | null;
+      heartbeat_interval: number | null;
+      heartbeat_timeout: number | null;
+      last_heartbeat_at: string | null;
+      schedule_pattern: string | null;
+      schedule_timezone: string | null;
+      total_topics: number | null;
+      max_topics: number | null;
+      current_topic_id: string | null;
+      context: Record<string, unknown> | null;
+      config: Record<string, unknown> | null;
+      error: string | null;
+      started_at: string | null;
+      completed_at: string | null;
+      created_at: string;
+      updated_at: string;
+    };
+    input: {
+      name?: string;
+      instruction?: string;
+      status?: string;
+      priority?: number;
+      sort_order?: number;
+      parent_task_id?: string | null;
+      assignee_agent_id?: string | null;
+      assignee_user_id?: string | null;
+      automation_mode?: string | null;
+      config?: Record<string, unknown>;
+      context?: Record<string, unknown>;
+      description?: string;
+      editor_data?: unknown;
+      heartbeat_interval?: number;
+      heartbeat_timeout?: number | null;
+      schedule_pattern?: string | null;
+      schedule_timezone?: string | null;
+      workspace_id?: string | null;
+      error?: string;
+    };
   };
   threads: {
     select: {
