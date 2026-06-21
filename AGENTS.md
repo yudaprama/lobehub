@@ -42,8 +42,88 @@ pREST.
 
 pREST returns Postgres column names in **snake_case** (`saved_at`,
 `save_source`, `document_id`). Frontend types and serializers expect
-**camelCase** (`savedAt`, `saveSource`, `documentId`). ALWAYS map
-columns when passing pREST results to existing functions.
+**camelCase** (`savedAt`, `saveSource`, `documentId`).
+
+**How this is enforced now (SDK ≥ 0.9.0):**
+
+- **`getLobehubQueryClient()` → `LobehubClient`** — defaults
+  `camelCase: true` on every method (select / insert / update / delete
+  / query / recentByUser / agentSharesByUser). Return types come from
+  `CamelTableTypes`, so TypeScript sees the camelCase shape
+  (`{ savedAt: string }`) and no cast is needed. **Prefer this client.**
+- **`getLobehubClient()` → `TypedPrestClient<TableTypes>`** — raw
+  snake_case output (matches the DB). Use when you need the verbatim
+  Postgres shape, or when calling an existing service that still
+  expects snake_case keys.
+- **`getPrestClient()` → `PrestClient`** — untyped. Pass
+  `{ camelCase: true }` per call if the consumer expects camelCase.
+
+**What this means in practice:**
+
+- When writing a NEW service, use `getLobehubQueryClient()` and let
+  the SDK handle the mapping. Do not write a manual `mapKeysToCamel`
+  helper.
+- When converting an OLD service that still does manual snake→camel
+  mapping: replace the map with `{ camelCase: true }` on the pREST
+  call (or switch to `getLobehubQueryClient()`), then remove the
+  manual mapper.
+- WHERE clauses and INSERT payloads still use **snake_case keys**
+  (those are Postgres column names, not mapped). Only the _response_
+  is camelCased.
+
+**What happened when this rule was violated (historically):**
+Services called pREST, got snake_case rows, passed them to frontend
+code expecting camelCase, and produced `undefined` fields at runtime
+— silent bugs that only surfaced in the UI. The SDK-level fix
+(`LobehubClient` + `CamelTableTypes`) makes this class of bug a
+compile error instead.
+
+---
+
+### 3. Type generation is centralized in `prest-js-sdk`
+
+`src/libs/prest/tables.ts` used to be a hand-written duplicate of the
+schema types. It has been removed. The single source of truth is now
+`TableTypes` exported from `prest-js-sdk/lobehub` — auto-generated
+from Supabase by the local `pg-to-ts` fork.
+
+- **Do NOT recreate `src/libs/prest/tables.ts`** or a similar local
+  schema file. If you need a table's row/input type, import
+  `TableTypes` from `prest-js-sdk/lobehub`.
+- **Regeneration** is a manual step when the Supabase schema changes:
+  `cd prest-js-sdk && bun run gen-types` (requires
+  `$PREST_PG_URL_LOBEHUB`). Commit the diff and bump the SDK via
+  changeset. CI publishes to npm on merge.
+- The local `pg-to-ts` fork carries two fixes upstream 4.1.1 lacks:
+  `user_id` is always optional in `*Input` types (pREST middleware
+  injects it), and `tsvector`/`vector` columns map to `string`/`number[]`
+  instead of `any`.
+
+---
+
+### 4. Type-check runs in CI, not locally
+
+`tsgo --noEmit` eats 12+ GB RAM. Never run `bun run type-check`
+locally — push and let GitHub Actions (`type-check.yml`) do it.
+If it fails, `.github/workflows/type-check-failure.yml` auto-files a
+dedupe-hashed issue. Close the issue when the errors are resolved; a
+new issue opens if they reappear.
+
+---
+
+### 5. pREST Tier 1 / Tier 2 routing (for new services)
+
+- **Tier 1** — straight CRUD on a table with `user_id`. Use
+  `getLobehubQueryClient().select('table_name', ...)` / `.insert(...)`
+  / `.update(...)` / `.delete(...)`. No Go, no tRPC, no new route.
+- **Tier 2** — parameterized SQL template that fits in a single
+  `/_QUERIES/lobehub/<name>.sql` file (joins, aggregates, FTS via
+  `ts_rank(...)`). Use
+  `getLobehubQueryClient().query('lobehub', '<name>', params)`.
+- **Tier 3** — anything that needs multi-step transactions, LLM
+  calls, streaming, or Go-specific libraries. Route through
+  `egentFetch` / `lambdaClient`. This is the _only_ tier that
+  justifies new Go handlers.
 
 ---
 
