@@ -1,0 +1,118 @@
+name: Type Check Failure Issue
+
+on:
+  workflow_run:
+    workflows:
+      - Type Check
+    types:
+      - completed
+
+permissions:
+  issues: write
+  contents: read
+
+jobs:
+  file-issue:
+    if: >-
+      github.event.workflow_run.conclusion == 'failure' &&
+      github.event.workflow_run.event == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download type-check log and compute hash
+        uses: actions/github-script@v7
+        id: analyze
+        with:
+          script: |
+            const run = context.payload.workflow_run;
+            const jobs = await github.rest.actions.listJobsForWorkflowRun({
+              owner: run.repository.owner.login,
+              repo: run.repository.name,
+              run_id: run.id,
+            });
+            const failedJob = jobs.data.jobs.find(j => j.conclusion === 'failure');
+            let log = '';
+            if (failedJob) {
+              const resp = await github.rest.actions.downloadJobLogsForWorkflowRun({
+                owner: run.repository.owner.login,
+                repo: run.repository.name,
+                job_id: failedJob.id,
+              });
+              log = typeof resp.data === 'string' ? resp.data : JSON.stringify(resp.data);
+            }
+            const errorLines = log
+              .split('\n')
+              .filter(l => /error TS\d+/.test(l))
+              .map(l => l.replace(/^\d{4}-\d{2}-\d{2}T[^Z]+Z\s+/, '').trim())
+              .filter(Boolean);
+            const unique = [...new Set(errorLines)];
+            const count = unique.length;
+            const { createHash } = require('crypto');
+            const hashInput = unique
+              .map(l => l.replace(/\(\d+,\d+\)/, '(?,?)'))
+              .sort()
+              .join('\n');
+            const hash = createHash('sha1').update(hashInput).digest('hex').slice(0, 12);
+            core.setOutput('log', unique.slice(0, 100).join('\n'));
+            core.setOutput('count', String(count));
+            core.setOutput('hash', hash);
+            core.setOutput('commit', run.head_sha.slice(0, 7));
+            core.setOutput('branch', run.head_branch);
+            core.setOutput('run_url', run.html_url);
+
+      - name: Check for duplicate issue
+        uses: actions/github-script@v7
+        id: dedupe
+        with:
+          script: |
+            const hash = '${{ steps.analyze.outputs.hash }}';
+            const q = `repo:${process.env.GITHUB_REPOSITORY} is:issue is:open "${hash}" in:title`;
+            const issues = await github.rest.search.issuesAndPullRequests({ q });
+            core.setOutput('exists', String(issues.data.total_count > 0));
+
+      - name: File issue on failure
+        if: >-
+          steps.dedupe.outputs.exists == 'false' &&
+          steps.analyze.outputs.count != '0'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const log = `${{ steps.analyze.outputs.log }}`;
+            const count = '${{ steps.analyze.outputs.count }}';
+            const hash = '${{ steps.analyze.outputs.hash }}';
+            const commit = '${{ steps.analyze.outputs.commit }}';
+            const branch = '${{ steps.analyze.outputs.branch }}';
+            const run_url = '${{ steps.analyze.outputs.run_url }}';
+            const title = `tsgo type-check failed on ${branch} (${count} errors, ${hash})`;
+            const body = [
+              '## Summary',
+              '',
+              `\`bun run type-check\` (tsgo) reported **${count}** errors on commit \`${commit}\` (branch \`${branch}\`).`,
+              '',
+              `- Hash: \`${hash}\``,
+              `- CI run: ${run_url}`,
+              '',
+              '## Errors',
+              '',
+              '```',
+              log,
+              '```',
+              '',
+              '_Filed automatically by `.github/workflows/type-check-failure.yml`. Close when the errors are resolved; a new issue will be opened if they reappear._',
+            ].join('\n');
+            try {
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title,
+                body,
+                labels: ['type-check'],
+              });
+            } catch (err) {
+              // `type-check` label may not exist — retry without labels.
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title,
+                body,
+              });
+            }
