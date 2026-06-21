@@ -226,7 +226,7 @@ class TaskService {
     const db = await getLobehubQueryClient();
     const data: Record<string, any> = { status };
     if (error !== undefined) data.error = error;
-    await db.update('tasks', { id }, data);
+    await db.update('tasks', { id }, data as any);
   };
 
   // Stays on tRPC — starts Temporal workflow
@@ -293,13 +293,15 @@ class TaskService {
   reorderSubtasks = async (id: string, order: string[]) => {
     const db = await getLobehubQueryClient();
     await Promise.all(
-      order.map((subtaskId, index) => db.update('tasks', { id: subtaskId }, { sort_order: index })),
+      order.map((subtaskId, index) =>
+        db.update('tasks', { id: subtaskId }, { sort_order: index } as any),
+      ),
     );
   };
 
   cancelTopic = async (topicId: string) => {
     const db = await getLobehubQueryClient();
-    await db.update('task_topics', { id: topicId }, { status: 'canceled' });
+    await db.update('task_topics', { id: topicId }, { status: 'canceled' } as any);
   };
 
   deleteTopic = async (topicId: string) => {
@@ -374,13 +376,9 @@ class TaskService {
 
   transferTask = async (taskId: string, targetWorkspaceId: string | null) => {
     const db = await getLobehubQueryClient();
-    await db.update(
-      'tasks',
-      { id: taskId },
-      {
-        workspace_id: targetWorkspaceId,
-      },
-    );
+    await db.update('tasks', { id: taskId }, {
+      workspace_id: targetWorkspaceId,
+    } as any);
   };
 
   copyTaskToWorkspace = async (taskId: string, targetWorkspaceId: string | null) =>

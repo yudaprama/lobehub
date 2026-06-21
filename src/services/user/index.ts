@@ -112,7 +112,7 @@ export class UserService {
 
   updateAvatar = async (avatar: string) => {
     const db = await getLobehubQueryClient();
-    await db.update('users', {}, { avatar });
+    await db.update('users', {}, { avatar } as any);
   };
 
   updateInterests = async (interests: string[]) => {
@@ -127,7 +127,7 @@ export class UserService {
 
   updateUsername = async (username: string) => {
     const db = await getLobehubQueryClient();
-    await db.update('users', {}, { username });
+    await db.update('users', {}, { username } as any);
   };
 
   /**

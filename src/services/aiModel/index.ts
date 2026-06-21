@@ -42,12 +42,12 @@ export class AiModelService {
 
   toggleModelEnabled = async (params: ToggleAiModelEnableParams) => {
     const db = await getLobehubQueryClient();
-    await db.update('ai_models', { id: params.id }, { enabled: params.enabled });
+    await db.update('ai_models', { id: params.id }, { enabled: params.enabled } as any);
   };
 
   updateAiModel = async (id: string, providerId: string, value: UpdateAiModelParams) => {
     const db = await getLobehubQueryClient();
-    await db.update('ai_models', { id, provider_id: providerId }, value);
+    await db.update('ai_models', { id, provider_id: providerId }, value as any);
   };
 
   batchUpdateAiModels = async (id: string, models: AiProviderModelListItem[]) => {
@@ -59,7 +59,7 @@ export class AiModelService {
 
   batchToggleAiModels = async (id: string, models: string[], enabled: boolean) => {
     const db = await getLobehubQueryClient();
-    await db.update('ai_models', { provider_id: id, id: { in: models } }, { enabled });
+    await db.update('ai_models', { provider_id: id, id: { in: models } }, { enabled } as any);
   };
 
   clearModelsByProvider = async (providerId: string) => {
@@ -76,7 +76,9 @@ export class AiModelService {
     const db = await getLobehubQueryClient();
     await Promise.all(
       items.map((item) =>
-        db.update('ai_models', { id: item.id, provider_id: providerId }, { sort: item.sort }),
+        db.update('ai_models', { id: item.id, provider_id: providerId }, {
+          sort: item.sort,
+        } as any),
       ),
     );
   };
