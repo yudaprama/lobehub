@@ -68,11 +68,16 @@ export class MessageService {
     // message_tts / messages_files into one row per message. pREST scopes by
     // user via [[auth.user_id_filters]]; we still pass `groupId` for the
     // groupAssistantMessages narrow path.
-    const rows = await client.query<UIChatMessage>('lobehub', 'messagesListByTopic', {
-      topicId: params.topicId,
-      ...getWorkspaceParams(),
-      ...(params.groupId ? { groupId: params.groupId } : {}),
-    });
+    const rows = await client.query<UIChatMessage>(
+      'lobehub',
+      'messagesListByTopic',
+      {
+        topicId: params.topicId,
+        ...getWorkspaceParams(),
+        ...(params.groupId ? { groupId: params.groupId } : {}),
+      },
+      { camelCase: true },
+    );
     return rows as unknown as UIChatMessage[];
   };
 
