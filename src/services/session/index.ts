@@ -1,7 +1,7 @@
 import type { Filter } from 'prest-js-sdk';
 
 import { idGenerator } from '@/libs/idGenerator';
-import { getLobehubClient, getPrestClient, getWorkspaceParams } from '@/libs/prest/client';
+import { getLobehubQueryClient, getWorkspaceParams } from '@/libs/prest/client';
 import { lambdaClient } from '@/libs/trpc/client';
 import {
   type ChatSessionList,
@@ -27,7 +27,7 @@ export class SessionService {
     type: LobeSessionType,
     data: Partial<LobeAgentSession>,
   ): Promise<string> => {
-    const db = await getLobehubClient();
+    const db = await getLobehubQueryClient();
     const id = idGenerator('sessions');
     const { config, group, meta, ...session } = data;
     await db.insert('sessions', {
@@ -46,12 +46,12 @@ export class SessionService {
   };
 
   getGroupedSessions = async (): Promise<ChatSessionList> => {
-    const client = await getPrestClient();
+    const db = await getLobehubQueryClient();
 
     // Tier 2 stored SQL template handles userId scoping + session/group join
     // + last-message preview. The shape matches ChatSessionList by
     // construction — the template was authored against this consumer.
-    const [result] = await client.query<ChatSessionList>('lobehub', 'sessionsListGrouped', {
+    const [result] = await db.query<ChatSessionList>('lobehub', 'sessionsListGrouped', {
       ...getWorkspaceParams(),
     });
     return result;
@@ -62,21 +62,22 @@ export class SessionService {
     range?: [string, string];
     startDate?: string;
   }): Promise<number> => {
-    const client = await getPrestClient();
+    const db = await getLobehubQueryClient();
     const where: Filter = {};
     if (params?.startDate) where.created_at = { gte: params.startDate };
     if (params?.endDate)
       where.created_at = { ...(where.created_at as object), lte: params.endDate };
-    const rows = await client.select<{ count: number }>('lobehub', 'public', 'sessions', {
+    const rows = await db.select('sessions', {
       count: true,
       ...(Object.keys(where).length ? { where } : {}),
+      camelCase: false,
     });
-    const row = Array.isArray(rows) ? rows[0] : undefined;
+    const row = Array.isArray(rows) ? (rows[0] as { count: number } | undefined) : undefined;
     return row?.count ?? 0;
   };
 
   updateSession = async (id: string, data: Partial<UpdateSessionParams>) => {
-    const db = await getLobehubClient();
+    const db = await getLobehubQueryClient();
     const patch: Record<string, unknown> = {};
     if (data.group !== undefined) patch.group_id = data.group === 'default' ? null : data.group;
     if (data.pinned !== undefined) patch.pinned = data.pinned;
@@ -90,12 +91,12 @@ export class SessionService {
   };
 
   removeSession = async (id: string) => {
-    const db = await getLobehubClient();
+    const db = await getLobehubQueryClient();
     await db.delete('sessions', { id });
   };
 
   removeAllSessions = async () => {
-    const db = await getLobehubClient();
+    const db = await getLobehubQueryClient();
     await db.delete('sessions', {});
   };
 
@@ -104,28 +105,28 @@ export class SessionService {
   // ************************************** //
 
   createSessionGroup = async (name: string, sort?: number): Promise<string> => {
-    const db = await getLobehubClient();
+    const db = await getLobehubQueryClient();
     const [row] = await db.insert('session_groups', { id: crypto.randomUUID(), name, sort });
     return row?.id;
   };
 
   removeSessionGroup = async (id: string) => {
-    const db = await getLobehubClient();
+    const db = await getLobehubQueryClient();
     await db.delete('session_groups', { id });
   };
 
   removeSessionGroups = async () => {
-    const db = await getLobehubClient();
+    const db = await getLobehubQueryClient();
     await db.delete('session_groups', {});
   };
 
   updateSessionGroup = async (id: string, value: Partial<SessionGroupItem>) => {
-    const db = await getLobehubClient();
+    const db = await getLobehubQueryClient();
     await db.update('session_groups', { id }, value);
   };
 
   updateSessionGroupOrder = async (sortMap: { id: string; sort: number }[]) => {
-    const db = await getLobehubClient();
+    const db = await getLobehubQueryClient();
     await Promise.all(sortMap.map(({ id, sort }) => db.update('session_groups', { id }, { sort })));
   };
 }

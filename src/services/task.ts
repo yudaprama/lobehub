@@ -1,6 +1,6 @@
 import type { CheckpointConfig, TaskAutomationMode, TaskStatus } from '@lobechat/types';
 
-import { getPrestClient, getWorkspaceParams } from '@/libs/prest/client';
+import { getLobehubQueryClient, getWorkspaceParams } from '@/libs/prest/client';
 import { lambdaClient } from '@/libs/trpc/client';
 
 import { briefService } from './brief';
@@ -29,8 +29,8 @@ class TaskService {
   // ── Queries ──
 
   find = async (id: string) => {
-    const client = await getPrestClient();
-    const rows = await client.select('lobehub', 'public', 'tasks', {
+    const db = await getLobehubQueryClient();
+    const rows = await db.select('tasks', {
       where: { id },
       limit: 1,
     });
@@ -48,14 +48,14 @@ class TaskService {
     priorities?: number[];
     statuses?: TaskStatus[];
   }) => {
-    const client = await getPrestClient();
+    const db = await getLobehubQueryClient();
     const where: Record<string, any> = { ...getWorkspaceParams() };
     if (params.assigneeAgentId) where.assignee_agent_id = params.assigneeAgentId;
     if (params.parentTaskId) where.parent_task_id = params.parentTaskId;
     if (params.parentTaskId === null) where.parent_task_id = null;
     if (params.statuses?.length) where.status = { in: params.statuses };
     if (params.priorities?.length) where.priority = { in: params.priorities };
-    const data = (await client.select('lobehub', 'public', 'tasks', {
+    const data = (await db.select('tasks', {
       where,
       limit: params.limit,
       offset: params.offset,
@@ -76,8 +76,8 @@ class TaskService {
   }) => lambdaClient.task.groupList.query(params);
 
   getSubtasks = async (id: string) => {
-    const client = await getPrestClient();
-    return client.select('lobehub', 'public', 'tasks', {
+    const db = await getLobehubQueryClient();
+    return db.select('tasks', {
       where: { parent_task_id: id, ...getWorkspaceParams() },
       order: ['sort_order', 'created_at:desc'],
     });
@@ -86,31 +86,31 @@ class TaskService {
   getTaskTree = async (id: string) => lambdaClient.task.getTaskTree.query({ id });
 
   getTopics = async (id: string) => {
-    const client = await getPrestClient();
-    return client.select('lobehub', 'public', 'task_topics', {
+    const db = await getLobehubQueryClient();
+    return db.select('task_topics', {
       where: { task_id: id },
       order: ['created_at:desc'],
     });
   };
 
   getDependencies = async (id: string) => {
-    const client = await getPrestClient();
-    return client.select('lobehub', 'public', 'task_dependencies', {
+    const db = await getLobehubQueryClient();
+    return db.select('task_dependencies', {
       where: { task_id: id },
     });
   };
 
   getPinnedDocuments = async (id: string) => {
-    const client = await getPrestClient();
-    return client.select('lobehub', 'public', 'task_documents', {
+    const db = await getLobehubQueryClient();
+    return db.select('task_documents', {
       where: { task_id: id },
       order: ['created_at:desc'],
     });
   };
 
   getCheckpoint = async (id: string) => {
-    const client = await getPrestClient();
-    const rows = (await client.select('lobehub', 'public', 'tasks', {
+    const db = await getLobehubQueryClient();
+    const rows = (await db.select('tasks', {
       where: { id },
       limit: 1,
     })) as Array<{ config: Record<string, any> | null }>;
@@ -119,8 +119,8 @@ class TaskService {
   };
 
   getReview = async (id: string) => {
-    const client = await getPrestClient();
-    const rows = (await client.select('lobehub', 'public', 'tasks', {
+    const db = await getLobehubQueryClient();
+    const rows = (await db.select('tasks', {
       where: { id },
       limit: 1,
     })) as Array<{ config: Record<string, any> | null }>;
@@ -145,7 +145,7 @@ class TaskService {
     schedulePattern?: string;
     scheduleTimezone?: string;
   }) => {
-    const client = await getPrestClient();
+    const db = await getLobehubQueryClient();
     const query: Record<string, any> = {
       instruction: params.instruction,
       ...getWorkspaceParams(),
@@ -163,7 +163,7 @@ class TaskService {
     if (params.createdByAgentId) query.createdByAgentId = params.createdByAgentId;
     if (params.editorData) query.editorData = JSON.stringify(params.editorData);
 
-    const rows = await client.query<CreatedTask>('lobehub', 'taskCreate', query);
+    const rows = await db.query<CreatedTask>('lobehub', 'taskCreate', query);
     return { data: rows[0], message: 'Task created', success: true };
   };
 
@@ -187,7 +187,7 @@ class TaskService {
       scheduleTimezone?: string | null;
     },
   ) => {
-    const client = await getPrestClient();
+    const db = await getLobehubQueryClient();
     const dbRow: Record<string, any> = {};
     if (data.assigneeAgentId !== undefined) dbRow.assignee_agent_id = data.assigneeAgentId;
     if (data.assigneeUserId !== undefined) dbRow.assignee_user_id = data.assigneeUserId;
@@ -204,29 +204,29 @@ class TaskService {
     if (data.priority !== undefined) dbRow.priority = data.priority;
     if (data.schedulePattern !== undefined) dbRow.schedule_pattern = data.schedulePattern;
     if (data.scheduleTimezone !== undefined) dbRow.schedule_timezone = data.scheduleTimezone;
-    await client.update('lobehub', 'public', 'tasks', { id }, dbRow);
+    await db.update('tasks', { id }, dbRow);
   };
 
   delete = async (id: string) => {
-    const client = await getPrestClient();
-    const rows = (await client.select('lobehub', 'public', 'tasks', {
+    const db = await getLobehubQueryClient();
+    const rows = (await db.select('tasks', {
       where: { id },
       limit: 1,
     })) as Array<{ id: string; identifier: string; name: string | null }>;
-    await client.delete('lobehub', 'public', 'tasks', { id });
+    await db.delete('tasks', { id });
     return { data: rows[0] ?? { id }, success: true };
   };
 
   clearAll = async () => {
-    const client = await getPrestClient();
-    await client.delete('lobehub', 'public', 'tasks', getWorkspaceParams());
+    const db = await getLobehubQueryClient();
+    await db.delete('tasks', getWorkspaceParams());
   };
 
   updateStatus = async (id: string, status: TaskStatus, error?: string) => {
-    const client = await getPrestClient();
+    const db = await getLobehubQueryClient();
     const data: Record<string, any> = { status };
     if (error !== undefined) data.error = error;
-    await client.update('lobehub', 'public', 'tasks', { id }, data);
+    await db.update('tasks', { id }, data);
   };
 
   // Stays on tRPC — starts Temporal workflow
@@ -247,25 +247,25 @@ class TaskService {
       topicId?: string;
     },
   ) => {
-    const client = await getPrestClient();
+    const db = await getLobehubQueryClient();
     const row: Record<string, any> = {
       task_id: id,
       content,
     };
     if (opts?.topicId) row.topic_id = opts.topicId;
-    await client.insert('lobehub', 'public', 'task_comments', row);
+    await db.insert('task_comments', row);
   };
 
   deleteComment = async (commentId: string) => {
-    const client = await getPrestClient();
-    await client.delete('lobehub', 'public', 'task_comments', { id: commentId });
+    const db = await getLobehubQueryClient();
+    await db.delete('task_comments', { id: commentId });
   };
 
   updateComment = async (commentId: string, content: string, opts?: { editorData?: unknown }) => {
-    const client = await getPrestClient();
+    const db = await getLobehubQueryClient();
     const data: Record<string, any> = { content };
     if (opts?.editorData !== undefined) data.editor_data = opts.editorData;
-    await client.update('lobehub', 'public', 'task_comments', { id: commentId }, data);
+    await db.update('task_comments', { id: commentId }, data);
   };
 
   addDependency = async (
@@ -273,8 +273,8 @@ class TaskService {
     dependsOnId: string,
     type: 'blocks' | 'relates' = 'blocks',
   ) => {
-    const client = await getPrestClient();
-    await client.insert('lobehub', 'public', 'task_dependencies', {
+    const db = await getLobehubQueryClient();
+    await db.insert('task_dependencies', {
       task_id: taskId,
       depends_on_id: dependsOnId,
       type,
@@ -283,48 +283,38 @@ class TaskService {
   };
 
   removeDependency = async (taskId: string, dependsOnId: string) => {
-    const client = await getPrestClient();
-    await client.delete('lobehub', 'public', 'task_dependencies', {
+    const db = await getLobehubQueryClient();
+    await db.delete('task_dependencies', {
       task_id: taskId,
       depends_on_id: dependsOnId,
     });
   };
 
   reorderSubtasks = async (id: string, order: string[]) => {
-    const client = await getPrestClient();
+    const db = await getLobehubQueryClient();
     await Promise.all(
-      order.map((subtaskId, index) =>
-        client.update('lobehub', 'public', 'tasks', { id: subtaskId }, { sort_order: index }),
-      ),
+      order.map((subtaskId, index) => db.update('tasks', { id: subtaskId }, { sort_order: index })),
     );
   };
 
   cancelTopic = async (topicId: string) => {
-    const client = await getPrestClient();
-    await client.update(
-      'lobehub',
-      'public',
-      'task_topics',
-      { id: topicId },
-      { status: 'canceled' },
-    );
+    const db = await getLobehubQueryClient();
+    await db.update('task_topics', { id: topicId }, { status: 'canceled' });
   };
 
   deleteTopic = async (topicId: string) => {
-    const client = await getPrestClient();
-    await client.delete('lobehub', 'public', 'task_topics', { id: topicId });
+    const db = await getLobehubQueryClient();
+    await db.delete('task_topics', { id: topicId });
   };
 
   updateConfig = async (id: string, config: Record<string, unknown>) => {
-    const client = await getPrestClient();
-    const rows = (await client.select('lobehub', 'public', 'tasks', {
+    const db = await getLobehubQueryClient();
+    const rows = (await db.select('tasks', {
       where: { id },
       limit: 1,
     })) as Array<{ config: Record<string, any> | null }>;
     const existing = (rows[0]?.config as Record<string, any>) ?? {};
-    await client.update(
-      'lobehub',
-      'public',
+    await db.update(
       'tasks',
       { id },
       {
@@ -334,15 +324,13 @@ class TaskService {
   };
 
   updateCheckpoint = async (id: string, checkpoint: CheckpointConfig) => {
-    const client = await getPrestClient();
-    const rows = (await client.select('lobehub', 'public', 'tasks', {
+    const db = await getLobehubQueryClient();
+    const rows = (await db.select('tasks', {
       where: { id },
       limit: 1,
     })) as Array<{ config: Record<string, any> | null }>;
     const existing = (rows[0]?.config as Record<string, any>) ?? {};
-    await client.update(
-      'lobehub',
-      'public',
+    await db.update(
       'tasks',
       { id },
       {
@@ -358,8 +346,8 @@ class TaskService {
     lambdaClient.task.runReview.mutate({ id, ...params });
 
   pinDocument = async (taskId: string, documentId: string, pinnedBy?: string) => {
-    const client = await getPrestClient();
-    await client.insert('lobehub', 'public', 'task_documents', {
+    const db = await getLobehubQueryClient();
+    await db.insert('task_documents', {
       task_id: taskId,
       document_id: documentId,
       pinned_by: pinnedBy ?? 'agent',
@@ -368,8 +356,8 @@ class TaskService {
   };
 
   unpinDocument = async (taskId: string, documentId: string) => {
-    const client = await getPrestClient();
-    await client.delete('lobehub', 'public', 'task_documents', {
+    const db = await getLobehubQueryClient();
+    await db.delete('task_documents', {
       task_id: taskId,
       document_id: documentId,
     });
@@ -385,10 +373,8 @@ class TaskService {
   // ── Transfer / Copy ──
 
   transferTask = async (taskId: string, targetWorkspaceId: string | null) => {
-    const client = await getPrestClient();
-    await client.update(
-      'lobehub',
-      'public',
+    const db = await getLobehubQueryClient();
+    await db.update(
       'tasks',
       { id: taskId },
       {
