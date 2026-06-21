@@ -1,7 +1,7 @@
 import { type CreateMessageParams } from '@lobechat/types';
 
 import { INBOX_SESSION_ID } from '@/const/session';
-import { getPrestClient, getWorkspaceParams } from '@/libs/prest/client';
+import { getLobehubQueryClient, getWorkspaceParams } from '@/libs/prest/client';
 import { lambdaClient } from '@/libs/trpc/client';
 import { type CreateThreadParams, type ThreadItem } from '@/types/topic';
 
@@ -11,18 +11,13 @@ interface CreateThreadWithMessageParams extends CreateThreadParams {
 
 export class ThreadService {
   getThreads = async (topicId: string): Promise<ThreadItem[]> => {
-    const client = await getPrestClient();
+    const db = await getLobehubQueryClient();
 
     // Tier 2 stored SQL template handles userId scoping + message subqueries.
-    return client.query<ThreadItem>(
-      'lobehub',
-      'threadMessages',
-      {
-        topicId,
-        ...getWorkspaceParams(),
-      },
-      { camelCase: true },
-    );
+    return db.query<ThreadItem>('lobehub', 'threadMessages', {
+      topicId,
+      ...getWorkspaceParams(),
+    });
   };
 
   createThreadWithMessage = async ({
@@ -40,9 +35,9 @@ export class ThreadService {
   };
 
   createThread = async (params: CreateThreadParams): Promise<string> => {
-    const client = await getPrestClient();
+    const db = await getLobehubQueryClient();
 
-    const [row] = await client.insert<{ id: string }>('lobehub', 'public', 'threads', {
+    const [row] = await db.insert<{ id: string }>('threads', {
       id: params.id ?? crypto.randomUUID(),
       title: params.title ?? null,
       topic_id: params.topicId,
@@ -62,7 +57,7 @@ export class ThreadService {
   };
 
   updateThread = async (id: string, data: Partial<ThreadItem>) => {
-    const client = await getPrestClient();
+    const db = await getLobehubQueryClient();
     const d = data as Record<string, any>;
 
     const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
@@ -73,13 +68,13 @@ export class ThreadService {
     if (d.editorData !== undefined) patch.editor_data = d.editorData;
     if (d.lastActiveAt) patch.last_active_at = d.lastActiveAt;
 
-    await client.update('lobehub', 'public', 'threads', { id }, patch);
+    await db.update('threads', { id }, patch);
   };
 
   removeThread = async (id: string) => {
-    const client = await getPrestClient();
+    const db = await getLobehubQueryClient();
 
-    await client.delete('lobehub', 'public', 'threads', { id });
+    await db.delete('threads', { id });
   };
 
   private toDbSessionId = (sessionId: string | undefined) => {

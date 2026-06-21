@@ -2,7 +2,7 @@ import type { OnboardingUserInfo } from '@lobechat/context-engine';
 import { type MarkdownPatchHunk } from '@lobechat/markdown-patch';
 import { type PartialDeep } from 'type-fest';
 
-import { getPrestClient } from '@/libs/prest/client';
+import { getLobehubQueryClient } from '@/libs/prest/client';
 import { lambdaClient } from '@/libs/trpc/client';
 import {
   type SaveUserQuestionInput,
@@ -21,14 +21,11 @@ export class UserService {
     duration: number;
     updatedAt: string;
   }> => {
-    const client = await getPrestClient();
-    const rows = await client.select<{ created_at: string; updated_at: string }>(
-      'lobehub',
-      'public',
-      'users',
-      { size: 1 },
-    );
-    const row = Array.isArray(rows) ? rows[0] : undefined;
+    const db = await getLobehubQueryClient();
+    const rows = await db.select('users', { size: 1, camelCase: false });
+    const row = Array.isArray(rows)
+      ? (rows[0] as { created_at: string; updated_at: string } | undefined)
+      : undefined;
     if (!row) {
       return { createdAt: '', duration: 0, updatedAt: '' };
     }
@@ -114,23 +111,23 @@ export class UserService {
   };
 
   updateAvatar = async (avatar: string) => {
-    const client = await getPrestClient();
-    await client.update('lobehub', 'public', 'users', {}, { avatar });
+    const db = await getLobehubQueryClient();
+    await db.update('users', {}, { avatar });
   };
 
   updateInterests = async (interests: string[]) => {
-    const client = await getPrestClient();
-    await client.update('lobehub', 'public', 'user_settings', {}, { interests });
+    const db = await getLobehubQueryClient();
+    await db.update('user_settings', {}, { interests });
   };
 
   updateFullName = async (fullName: string) => {
-    const client = await getPrestClient();
-    await client.update('lobehub', 'public', 'users', {}, { full_name: fullName });
+    const db = await getLobehubQueryClient();
+    await db.update('users', {}, { full_name: fullName });
   };
 
   updateUsername = async (username: string) => {
-    const client = await getPrestClient();
-    await client.update('lobehub', 'public', 'users', {}, { username });
+    const db = await getLobehubQueryClient();
+    await db.update('users', {}, { username });
   };
 
   /**
@@ -141,8 +138,8 @@ export class UserService {
    * on first call; pREST's update silently succeeds on zero rows.
    */
   updatePreference = async (preference: Partial<UserPreference>) => {
-    const client = await getPrestClient();
-    await client.update('lobehub', 'public', 'user_settings', {}, { preference });
+    const db = await getLobehubQueryClient();
+    await db.update('user_settings', {}, { preference });
   };
 
   /**
@@ -151,8 +148,8 @@ export class UserService {
    * Tier 1 update on `user_settings.guide`. Same auto-scope pattern.
    */
   updateGuide = async (guide: Partial<UserGuide>) => {
-    const client = await getPrestClient();
-    await client.update('lobehub', 'public', 'user_settings', {}, { guide });
+    const db = await getLobehubQueryClient();
+    await db.update('user_settings', {}, { guide });
   };
 
   /**
@@ -166,8 +163,8 @@ export class UserService {
   };
 
   resetUserSettings = async () => {
-    const client = await getPrestClient();
-    await client.update('lobehub', 'public', 'user_settings', {}, { settings: {} });
+    const db = await getLobehubQueryClient();
+    await db.update('user_settings', {}, { settings: {} });
   };
 }
 
