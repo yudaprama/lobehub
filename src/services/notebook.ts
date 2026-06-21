@@ -48,7 +48,7 @@ class NotebookService {
       await db.insert('topic_documents', {
         document_id: doc.id,
         topic_id: params.topicId,
-      } as any);
+      });
     }
     return doc;
   };

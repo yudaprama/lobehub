@@ -105,7 +105,7 @@ export class SessionService {
 
   createSessionGroup = async (name: string, sort?: number): Promise<string> => {
     const db = await getLobehubClient();
-    const [row] = await db.insert('session_groups', { id: crypto.randomUUID(), name, sort } as any);
+    const [row] = await db.insert('session_groups', { id: crypto.randomUUID(), name, sort });
     return row?.id;
   };
 

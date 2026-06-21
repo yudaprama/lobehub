@@ -54,7 +54,7 @@ export class PluginService {
         manifest: plugin.manifest,
         settings: plugin.settings,
         type: plugin.type,
-      } as any);
+      });
     }
   };
 
@@ -86,7 +86,7 @@ export class PluginService {
       manifest: customPlugin.manifest,
       settings: customPlugin.settings,
       type: 'customPlugin',
-    } as any);
+    });
   };
 
   updatePlugin = async (id: string, value: Partial<LobeToolCustomPlugin>): Promise<void> => {
