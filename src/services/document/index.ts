@@ -3,7 +3,7 @@ import { type DocumentItem } from '@lobechat/database/schemas';
 import type { Filter } from 'prest-js-sdk';
 
 import { egentFetch, getEgentUrl } from '@/libs/egent/client';
-import { getPrestClient } from '@/libs/prest/client';
+import { getLobehubQueryClient, getPrestClient } from '@/libs/prest/client';
 import { lambdaClient } from '@/libs/trpc/client';
 import type {
   CompareHistoryItemsInput,
@@ -154,6 +154,7 @@ export class DocumentService {
 
     const [items, countRows] = await Promise.all([
       client.select<DocumentItem>('lobehub', 'public', 'documents', {
+        camelCase: true,
         order: ['updated_at:desc'],
         page,
         size,
@@ -171,16 +172,16 @@ export class DocumentService {
   }
 
   async listDocumentHistory(params: ListDocumentHistoryParams): Promise<ListHistoryOutput> {
-    const client = await getPrestClient();
+    const db = await getLobehubQueryClient();
 
-    const queryParams: Record<string, string> = {
+    const queryParams: Record<string, string | number | boolean> = {
       documentId: params.documentId,
       limit: String(params.limit ?? 20),
     };
     if (params.beforeSavedAt) queryParams.beforeSavedAt = params.beforeSavedAt;
     if (params.beforeId) queryParams.beforeId = params.beforeId;
 
-    const rows = await client.query<{
+    const rows = await db.query<{
       id: string;
       documentId: string;
       editorData: any;
@@ -263,6 +264,7 @@ export class DocumentService {
           getPrestClient()
             .then((client) =>
               client.select<DocumentItem>('lobehub', 'public', 'documents', {
+                camelCase: true,
                 where: { id },
                 size: 1,
               }),
@@ -277,6 +279,7 @@ export class DocumentService {
 
     const client = await getPrestClient();
     const rows = await client.select<DocumentItem>('lobehub', 'public', 'documents', {
+      camelCase: true,
       where: { id },
       size: 1,
     });
