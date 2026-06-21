@@ -2,6 +2,7 @@ import { CUSTOM_DOCUMENT_FILE_TYPE } from '@lobechat/const';
 import { type DocumentItem } from '@lobechat/database/schemas';
 import type { Filter } from 'prest-js-sdk';
 
+import { egentFetch, getEgentUrl } from '@/libs/egent/client';
 import { getPrestClient } from '@/libs/prest/client';
 import { lambdaClient } from '@/libs/trpc/client';
 import type {
@@ -198,25 +199,33 @@ export class DocumentService {
     params: GetDocumentHistoryItemParams,
     uniqueKey?: string,
   ): Promise<GetHistoryItemOutput> {
-    if (uniqueKey) {
-      return abortableRequest.execute(uniqueKey, async (signal) => {
-        const result = await lambdaClient.document.getDocumentHistoryItem.query(params, {
-          signal,
-        });
+    const fetchHistoryItem = async (signal?: AbortSignal) => {
+      const url = new URL(`${getEgentUrl()}/v1/documents/history/item`);
+      url.searchParams.set('documentId', params.documentId);
+      url.searchParams.set('historyId', params.historyId);
+      const res = await egentFetch(url.pathname + url.search, { signal });
+      if (!res.ok) throw new Error(`getDocumentHistoryItem failed: ${res.status}`);
+      const result = await res.json();
+      return serializeHistoryItem(result);
+    };
 
-        return serializeHistoryItem(result);
-      });
+    if (uniqueKey) {
+      return abortableRequest.execute(uniqueKey, (signal) => fetchHistoryItem(signal));
     }
 
-    const result = await lambdaClient.document.getDocumentHistoryItem.query(params);
-
-    return serializeHistoryItem(result);
+    return fetchHistoryItem();
   }
 
   async compareDocumentHistoryItems(
     params: CompareDocumentHistoryItemsParams,
   ): Promise<CompareHistoryItemsOutput> {
-    const result = await lambdaClient.document.compareDocumentHistoryItems.query(params);
+    const url = new URL(`${getEgentUrl()}/v1/documents/history/compare`);
+    url.searchParams.set('documentId', params.documentId);
+    url.searchParams.set('fromHistoryId', params.fromHistoryId);
+    url.searchParams.set('toHistoryId', params.toHistoryId);
+    const res = await egentFetch(url.pathname + url.search);
+    if (!res.ok) throw new Error(`compareDocumentHistoryItems failed: ${res.status}`);
+    const result = await res.json();
 
     return serializeHistoryComparison(result);
   }
@@ -275,18 +284,35 @@ export class DocumentService {
   }
 
   async deleteDocument(id: string): Promise<void> {
-    await lambdaClient.document.deleteDocument.mutate({ id });
+    await egentFetch('/v1/documents/remove', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id }),
+    });
   }
 
   async deleteDocuments(ids: string[]): Promise<void> {
-    await lambdaClient.document.deleteDocuments.mutate({ ids });
+    await egentFetch('/v1/documents/remove', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ids }),
+    });
   }
 
   async updateDocument(params: UpdateDocumentParams): Promise<UpdateDocumentOutput> {
     const isFirstAutosave = params.saveSource === 'autosave' && !autosavedOnceIds.has(params.id);
     const mutationParams = isFirstAutosave ? { ...params, breakAutosaveWindow: true } : params;
-    const result = await lambdaClient.document.updateDocument.mutate(mutationParams);
+    const res = await egentFetch('/v1/documents/update', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(mutationParams),
+    });
+    if (!res.ok) {
+      if (res.status === 409) throw new Error('Document locked by another user');
+      throw new Error(`updateDocument failed: ${res.status}`);
+    }
     if (isFirstAutosave) autosavedOnceIds.add(params.id);
+    const result = await res.json();
 
     return {
       ...result,
@@ -316,7 +342,13 @@ export class DocumentService {
   }
 
   async saveDocumentHistory(params: SaveDocumentHistoryInput): Promise<SaveDocumentHistoryOutput> {
-    const result = await lambdaClient.document.saveDocumentHistory.mutate(params);
+    const res = await egentFetch('/v1/documents/history/save', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(params),
+    });
+    if (!res.ok) throw new Error(`saveDocumentHistory failed: ${res.status}`);
+    const result = await res.json();
 
     return {
       savedAt: result.savedAt instanceof Date ? result.savedAt.toISOString() : result.savedAt,

@@ -1,4 +1,5 @@
 import { PrestClient } from 'prest-js-sdk';
+import { lobehubClient } from 'prest-js-sdk/lobehub';
 
 import { getKratosSession } from '@/libs/kratos/server-session';
 
@@ -20,4 +21,9 @@ export async function getPrestServerClient(headers: Headers): Promise<PrestClien
 
   const prestUrl = process.env.PREST_URL ?? DEFAULT_PREST_URL;
   return new PrestClient({ prestUrl, authToken: session.user.id });
+}
+
+export async function getLobehubServerQueryClient(headers: Headers) {
+  const client = await getPrestServerClient(headers);
+  return client ? lobehubClient(client) : null;
 }

@@ -1,4 +1,5 @@
 import { PrestClient } from 'prest-js-sdk';
+import { lobehubClient } from 'prest-js-sdk/lobehub';
 
 import { fileEnv } from '@/envs/file';
 
@@ -69,5 +70,15 @@ export async function getLobehubClient() {
   return client.forSchema<LobehubTables>('lobehub', 'public');
 }
 
-export { PrestApiError, PrestClient, tsquery, TypedPrestClient } from 'prest-js-sdk';
+export async function getLobehubQueryClient() {
+  const client = await getPrestClient();
+  return lobehubClient(client);
+}
+
 export { getWorkspaceParams } from './workspaceScope';
+export { PrestApiError, PrestClient, tsquery, TypedPrestClient } from 'prest-js-sdk';
+export type {
+  AgentShareRow,
+  LobehubClient,
+  RecentItem as PrestRecentItem,
+} from 'prest-js-sdk/lobehub';

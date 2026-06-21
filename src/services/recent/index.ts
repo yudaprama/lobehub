@@ -1,7 +1,9 @@
 import type { TaskStatus } from '@lobechat/types';
+import type { RecentItem as PrestRecentRow } from 'prest-js-sdk/lobehub';
 
 import { SESSION_CHAT_TOPIC_URL } from '@/const/url';
-import { getPrestClient, getWorkspaceParams } from '@/libs/prest/client';
+import { getLobehubQueryClient } from '@/libs/prest/client';
+import { getWorkspaceParams } from '@/libs/prest/workspaceScope';
 import type { ChatTopicMetadata } from '@/types/topic';
 
 export interface RecentItem {
@@ -17,16 +19,10 @@ export interface RecentItem {
   updatedAt: Date;
 }
 
-interface RecentQueryRow {
-  id: string;
-  metadata?: ChatTopicMetadata | null;
-  route_group_id?: string | null;
-  route_id?: string | null;
-  status?: TaskStatus | null;
-  title: string;
-  type: 'topic' | 'document' | 'task';
-  updated_at: string;
-}
+type RecentQueryRow = Omit<PrestRecentRow, 'metadata' | 'status'> & {
+  metadata: ChatTopicMetadata | null;
+  status: TaskStatus | null;
+};
 
 const toRecentItem = (item: RecentQueryRow): RecentItem => {
   let routePath: string;
@@ -67,11 +63,11 @@ const toRecentItem = (item: RecentQueryRow): RecentItem => {
 
 class RecentService {
   getAll = async (limit?: number): Promise<RecentItem[]> => {
-    const client = await getPrestClient();
-    const rows = await client.query<RecentQueryRow>('lobehub', 'recentByUser', {
+    const db = await getLobehubQueryClient();
+    const rows = (await db.recentByUser({
       limit: limit ?? 10,
       ...getWorkspaceParams(),
-    });
+    })) as RecentQueryRow[];
 
     return rows.map(toRecentItem);
   };

@@ -1,6 +1,7 @@
 import { CUSTOM_DOCUMENT_FILE_TYPE, DERIVED_DOCUMENT_SOURCE_TYPE } from '@lobechat/const';
 
 import { getAlistClient } from '@/libs/alist/client';
+import { egentFetch } from '@/libs/egent/client';
 import { getLobehubClient, getPrestClient, getWorkspaceParams } from '@/libs/prest/client';
 import { lambdaClient } from '@/libs/trpc/client';
 import {
@@ -70,18 +71,18 @@ const mapRowToFileListItem = (row: KnowledgeItemRow): FileListItem => ({
   url: resolveFileAccessUrl(row.file_id, row.url),
 });
 
-interface CreateFileParams extends Omit<UploadFileParams, 'url'> {
-  knowledgeBaseId?: string;
-  parentId?: string;
-  url: string;
-}
-
 export class FileService {
   createFile = async (
     params: UploadFileParams & { parentId?: string },
     knowledgeBaseId?: string,
   ): Promise<{ id: string; url: string }> => {
-    return lambdaClient.file.createFile.mutate({ ...params, knowledgeBaseId } as CreateFileParams);
+    const res = await egentFetch('/v1/files/create', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...params, knowledgeBaseId }),
+    });
+    if (!res.ok) throw new Error(`createFile failed: ${res.status}`);
+    return res.json();
   };
 
   getFile = async (id: string): Promise<FileItem> => {
@@ -139,9 +140,13 @@ export class FileService {
     }
 
     try {
-      await lambdaClient.file.removeFile.mutate({ id });
+      await egentFetch('/v1/files/remove', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id }),
+      });
     } catch (e) {
-      console.warn('[file] TRPC removeFile failed:', e);
+      console.warn('[file] Go removeFile failed:', e);
     }
   };
 
@@ -157,9 +162,13 @@ export class FileService {
     }
 
     try {
-      await lambdaClient.file.removeFiles.mutate({ ids });
+      await egentFetch('/v1/files/remove', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids }),
+      });
     } catch (e) {
-      console.warn('[file] TRPC removeFiles failed:', e);
+      console.warn('[file] Go removeFiles failed:', e);
     }
   };
 
@@ -178,9 +187,18 @@ export class FileService {
     }
 
     try {
-      await lambdaClient.file.removeAllFiles.mutate();
+      const db = await getLobehubClient();
+      const rows = await db.select('files', { size: 10000 });
+      if (rows.length > 0) {
+        const ids = rows.map((r: any) => r.id);
+        await egentFetch('/v1/files/remove', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ids }),
+        });
+      }
     } catch (e) {
-      console.warn('[file] TRPC removeAllFiles failed:', e);
+      console.warn('[file] Go removeAllFiles failed:', e);
     }
   };
 
@@ -296,9 +314,21 @@ export class FileService {
 
   checkFileHash = async (hash: string): Promise<CheckFileHashResult> => {
     try {
-      return await lambdaClient.file.checkFileHash.mutate({ hash });
+      const db = await getLobehubClient();
+      const [row] = (await db.select('global_files', {
+        where: { hash_id: hash },
+        size: 1,
+      })) as Array<{ file_type?: string; metadata?: any; size?: number; url: string }>;
+      if (!row) return { isExist: false, metadata: null, url: '' };
+      return {
+        isExist: true,
+        url: row.url,
+        fileType: row.file_type,
+        size: row.size,
+        metadata: row.metadata,
+      } as CheckFileHashResult;
     } catch (e) {
-      console.warn('[file] TRPC checkFileHash failed:', e);
+      console.warn('[file] pREST checkFileHash failed:', e);
       return { isExist: false, metadata: null, url: '' };
     }
   };
@@ -334,7 +364,12 @@ export class FileService {
       }
     }
 
-    return lambdaClient.file.updateFile.mutate({ id, ...data });
+    const db = await getLobehubClient();
+    const updateData: Record<string, any> = {};
+    if (data.name !== undefined) updateData.name = data.name;
+    if (data.parentId !== undefined) updateData.parent_id = data.parentId;
+    if (data.metadata !== undefined) updateData.metadata = data.metadata;
+    await db.update('files', { id }, updateData);
   };
 
   getDownloadUrl = async (path: string): Promise<string> => {

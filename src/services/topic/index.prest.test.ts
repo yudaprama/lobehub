@@ -11,6 +11,7 @@ const prestMock = vi.hoisted(() => ({
 
 vi.mock('@/libs/prest/client', () => ({
   getPrestClient: vi.fn(() => Promise.resolve(prestMock)),
+  getWorkspaceParams: () => ({}),
 }));
 
 vi.mock('@/libs/trpc/client', () => ({
