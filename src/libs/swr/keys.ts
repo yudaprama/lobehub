@@ -187,7 +187,7 @@ export const serverConfigKeys = {
 };
 
 // ---- discover (marketplace) ---------------------------------------------
-// NOTE: discover/eval/ragEval/knowledgeBase/device/userMemory/agentKnowledge/
+// NOTE: discover/ragEval/knowledgeBase/device/userMemory/agentKnowledge/
 // agentBot/file/chatTool prefixes are deliberately kept OUT of `CACHE_TIERS`
 // (see localStorageProvider.ts) so this key-convergence introduces no new
 // persistence — they stay memory-only exactly as before.
@@ -361,24 +361,6 @@ export const discoverKeys = {
       page,
     ],
   ),
-};
-
-// ---- agent eval ---------------------------------------------------------
-export const evalKeys = {
-  benchmarkDetail: def('eval:benchmarkDetail', (id: string) => ['eval:benchmarkDetail', id]),
-  benchmarks: def('eval:benchmarks', () => ['eval:benchmarks']),
-  datasetDetail: def('eval:datasetDetail', (id: string) => ['eval:datasetDetail', id]),
-  datasetRuns: def('eval:datasetRuns', (datasetId: string) => ['eval:datasetRuns', datasetId]),
-  datasets: def('eval:datasets', (benchmarkId: string) => ['eval:datasets', benchmarkId]),
-  runDetail: def('eval:runDetail', (id: string) => ['eval:runDetail', id]),
-  runResults: def('eval:runResults', (id: string) => ['eval:runResults', id]),
-  runs: def('eval:runs', (benchmarkId?: string) => ['eval:runs', benchmarkId]),
-  testCases: def('eval:testCases', (datasetId: string, limit?: number, offset?: number) => [
-    'eval:testCases',
-    datasetId,
-    limit,
-    offset,
-  ]),
 };
 
 // ---- RAG eval -----------------------------------------------------------
@@ -824,7 +806,6 @@ export const swrKeys = {
   discover: discoverKeys,
   document: documentSWRKeys,
   electron: electronKeys,
-  eval: evalKeys,
   favorite: favoriteKeys,
   file: fileKeys,
   fleet: fleetKeys,

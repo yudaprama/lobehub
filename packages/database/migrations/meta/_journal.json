@@ -791,6 +791,13 @@
       "when": 1781870093420,
       "tag": "0112_add_postgres_fts",
       "breakpoints": true
+    },
+    {
+      "idx": 113,
+      "version": "7",
+      "when": 1782028800000,
+      "tag": "0113_drop_agent_eval_tables",
+      "breakpoints": true
     }
   ],
   "version": "6"

@@ -81,14 +81,6 @@ import CommunityListSkillLayout from '@/routes/(main)/community/(list)/skill/_la
 import DevtoolsIndexPage from '@/routes/(main)/devtools';
 import DevtoolsLayout from '@/routes/(main)/devtools/_layout';
 import DevtoolsToolPage from '@/routes/(main)/devtools/[identifier]';
-import EvalOverviewPage from '@/routes/(main)/eval';
-import EvalLayout from '@/routes/(main)/eval/_layout';
-import EvalHomeLayout from '@/routes/(main)/eval/(home)/_layout';
-import EvalBenchmarkDetailPage from '@/routes/(main)/eval/bench/[benchmarkId]';
-import EvalBenchLayout from '@/routes/(main)/eval/bench/[benchmarkId]/_layout';
-import EvalDatasetDetailPage from '@/routes/(main)/eval/bench/[benchmarkId]/datasets/[datasetId]';
-import EvalRunDetailPage from '@/routes/(main)/eval/bench/[benchmarkId]/runs/[runId]';
-import EvalCaseDetailPage from '@/routes/(main)/eval/bench/[benchmarkId]/runs/[runId]/cases/[caseId]';
 import FleetPage from '@/routes/(main)/fleet';
 import GroupPage from '@/routes/(main)/group';
 import DesktopGroupLayout from '@/routes/(main)/group/_layout';
@@ -481,53 +473,6 @@ export const sharedMainAreaChildren: RouteObject[] = [
   },
 
   ...BusinessDesktopRoutesWithMainLayout,
-
-  // Eval routes
-  {
-    children: [
-      // Home (overview)
-      {
-        children: [
-          {
-            element: <EvalOverviewPage />,
-            index: true,
-          },
-        ],
-        element: <EvalHomeLayout />,
-      },
-      // Bench routes (with dedicated sidebar)
-      {
-        children: [
-          {
-            element: <EvalBenchmarkDetailPage />,
-            index: true,
-          },
-          {
-            children: [
-              {
-                element: <EvalRunDetailPage />,
-                index: true,
-              },
-              {
-                element: <EvalCaseDetailPage />,
-                path: 'cases/:caseId',
-              },
-            ],
-            path: 'runs/:runId',
-          },
-          {
-            element: <EvalDatasetDetailPage />,
-            path: 'datasets/:datasetId',
-          },
-        ],
-        element: <EvalBenchLayout />,
-        path: 'bench/:benchmarkId',
-      },
-    ],
-    element: <EvalLayout />,
-    errorElement: <ErrorBoundary />,
-    path: 'eval',
-  },
 
   // Task workspace routes (cross-agent)
   {

@@ -11,7 +11,6 @@ import { registerConfigCommand } from './commands/config';
 import { registerConnectCommand } from './commands/connect';
 import { registerDeviceCommand } from './commands/device';
 import { registerDocCommand } from './commands/doc';
-import { registerEvalCommand } from './commands/eval';
 import { registerFileCommand } from './commands/file';
 import { registerGenerateCommand } from './commands/generate';
 import { registerHeteroCommand } from './commands/hetero';
@@ -78,7 +77,6 @@ export function createProgram() {
   registerUserCommand(program);
   registerVerifyCommand(program);
   registerConfigCommand(program);
-  registerEvalCommand(program);
   registerMigrateCommand(program);
 
   return program;

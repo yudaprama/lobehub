@@ -10,7 +10,6 @@ import { publicProcedure, router } from '@/libs/trpc/lambda';
 import { agentRouter } from './agent';
 import { agentBotProviderRouter } from './agentBotProvider';
 import { agentDocumentRouter } from './agentDocument';
-import { agentEvalRouter } from './agentEval';
 import { agentGroupRouter } from './agentGroup';
 import { agentSignalRouter } from './agentSignal';
 import { agentSkillsRouter } from './agentSkills';
@@ -59,7 +58,6 @@ export const lambdaRouter = router({
   agentBotProvider: agentBotProviderRouter,
   botMessage: botMessageRouter,
   agentDocument: agentDocumentRouter,
-  agentEval: agentEvalRouter,
   agentSkills: agentSkillsRouter,
   agentSignal: agentSignalRouter,
   task: taskRouter,
