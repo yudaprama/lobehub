@@ -112,22 +112,22 @@ export class UserService {
 
   updateAvatar = async (avatar: string) => {
     const db = await getLobehubQueryClient();
-    await db.update('users', {}, { avatar } as any);
+    await db.update('users', {}, { avatar });
   };
 
   updateInterests = async (interests: string[]) => {
     const db = await getLobehubQueryClient();
-    await db.update('user_settings', {}, { interests } as any);
+    await db.update('user_settings', {}, { interests });
   };
 
   updateFullName = async (fullName: string) => {
     const db = await getLobehubQueryClient();
-    await db.update('users', {}, { full_name: fullName } as any);
+    await db.update('users', {}, { full_name: fullName });
   };
 
   updateUsername = async (username: string) => {
     const db = await getLobehubQueryClient();
-    await db.update('users', {}, { username } as any);
+    await db.update('users', {}, { username });
   };
 
   /**
@@ -139,7 +139,7 @@ export class UserService {
    */
   updatePreference = async (preference: Partial<UserPreference>) => {
     const db = await getLobehubQueryClient();
-    await db.update('user_settings', {}, { preference } as any);
+    await db.update('user_settings', {}, { preference });
   };
 
   /**
@@ -149,7 +149,7 @@ export class UserService {
    */
   updateGuide = async (guide: Partial<UserGuide>) => {
     const db = await getLobehubQueryClient();
-    await db.update('user_settings', {}, { guide } as any);
+    await db.update('user_settings', {}, { guide });
   };
 
   /**
@@ -164,7 +164,7 @@ export class UserService {
 
   resetUserSettings = async () => {
     const db = await getLobehubQueryClient();
-    await db.update('user_settings', {}, { settings: {} } as any);
+    await db.update('user_settings', {}, { settings: {} });
   };
 }
 

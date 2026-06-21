@@ -410,8 +410,8 @@ export class FileService {
     const taskId = type === 'embedding' ? f.embeddingTaskId : f.chunkTaskId;
     if (!taskId) return;
 
-    const nullField = type === 'embedding' ? 'embeddingTaskId' : 'chunkTaskId';
-    await db.update('files', { id }, { [nullField]: null } as any);
+    const nullField = type === 'embedding' ? 'embedding_task_id' : 'chunk_task_id';
+    await db.update('files', { id }, { [nullField]: null });
     await db.delete('async_tasks', { id: taskId });
   };
 
@@ -438,7 +438,7 @@ export class FileService {
     if (data.name !== undefined) updateData.name = data.name;
     if (data.parentId !== undefined) updateData.parent_id = data.parentId;
     if (data.metadata !== undefined) updateData.metadata = data.metadata;
-    await db.update('files', { id }, updateData as any);
+    await db.update('files', { id }, updateData);
   };
 
   getDownloadUrl = async (path: string): Promise<string> => {

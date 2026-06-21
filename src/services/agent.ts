@@ -107,12 +107,9 @@ class AgentService {
    * Create a new agent with session.
    * Automatically normalizes market agent config (handles model as object).
    *
-   * The agents insert casts the whole payload as any because
-   * `session_group_id` isn't in the SDK's AgentsInput — structural
-   * mismatch between the service's groupId param and the schema's
-   * column set. The sessions insert's `metadata: normalizedConfig`
-   * narrows PartialDeep<AgentItem> to Json (Record<string, unknown>),
-   * which is a real type conversion, not a hack.
+   * The sessions insert's `metadata: normalizedConfig` narrows
+   * PartialDeep<AgentItem> to Json (Record<string, unknown>), which
+   * is a real type conversion, not a hack.
    */
   createAgent = async (params: CreateAgentParams): Promise<CreateAgentResult> => {
     const normalizedConfig = normalizeMarketAgentModel(params.config);
@@ -128,14 +125,14 @@ class AgentService {
       model: normalizedConfig?.model ?? null,
       session_group_id: params.groupId ?? null,
       virtual: false,
-    } as any);
+    });
 
     await db.insert('sessions', {
       id: agentId,
       type: 'agent',
       group_id: params.groupId === 'default' ? null : (params.groupId ?? null),
       metadata: normalizedConfig as unknown as Record<string, unknown>,
-    } as any);
+    });
 
     return { agentId };
   };
@@ -158,7 +155,7 @@ class AgentService {
       model: normalizedConfig?.model ?? null,
       session_group_id: params.groupId ?? null,
       virtual: true,
-    } as any);
+    });
 
     return { agentId };
   };
@@ -298,7 +295,7 @@ class AgentService {
    */
   updateAgentPinned = async (agentId: string, pinned: boolean) => {
     const db = await getLobehubQueryClient();
-    await db.update('agents', { id: agentId }, { pinned } as any);
+    await db.update('agents', { id: agentId }, { pinned });
   };
 
   /**

@@ -18,7 +18,7 @@ export interface GetAiProviderModelListParams {
 export class AiModelService {
   createAiModel = async (params: CreateAiModelParams) => {
     const db = await getLobehubQueryClient();
-    return db.insert('ai_models', params as any);
+    return db.insert('ai_models', params);
   };
 
   getAiProviderModelList = async (
@@ -42,24 +42,22 @@ export class AiModelService {
 
   toggleModelEnabled = async (params: ToggleAiModelEnableParams) => {
     const db = await getLobehubQueryClient();
-    await db.update('ai_models', { id: params.id }, { enabled: params.enabled } as any);
+    await db.update('ai_models', { id: params.id }, { enabled: params.enabled });
   };
 
   updateAiModel = async (id: string, providerId: string, value: UpdateAiModelParams) => {
     const db = await getLobehubQueryClient();
-    await db.update('ai_models', { id, provider_id: providerId }, value as any);
+    await db.update('ai_models', { id, provider_id: providerId }, value);
   };
 
   batchUpdateAiModels = async (id: string, models: AiProviderModelListItem[]) => {
     const db = await getLobehubQueryClient();
-    await Promise.all(
-      models.map((m) => db.update('ai_models', { id: m.id, provider_id: id }, m as any)),
-    );
+    await Promise.all(models.map((m) => db.update('ai_models', { id: m.id, provider_id: id }, m)));
   };
 
   batchToggleAiModels = async (id: string, models: string[], enabled: boolean) => {
     const db = await getLobehubQueryClient();
-    await db.update('ai_models', { provider_id: id, id: { in: models } }, { enabled } as any);
+    await db.update('ai_models', { provider_id: id, id: { in: models } }, { enabled });
   };
 
   clearModelsByProvider = async (providerId: string) => {
@@ -76,9 +74,13 @@ export class AiModelService {
     const db = await getLobehubQueryClient();
     await Promise.all(
       items.map((item) =>
-        db.update('ai_models', { id: item.id, provider_id: providerId }, {
-          sort: item.sort,
-        } as any),
+        db.update(
+          'ai_models',
+          { id: item.id, provider_id: providerId },
+          {
+            sort: item.sort,
+          },
+        ),
       ),
     );
   };

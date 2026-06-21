@@ -17,13 +17,13 @@ export class ServerService {
     const db = await getLobehubQueryClient();
     const [row] = await db.insert('generation_topics', {
       type: type ?? 'image',
-    } as any);
+    });
     return row?.id;
   }
 
   async updateTopic(id: string, data: UpdateTopicValue): Promise<GenerationTopicItem | undefined> {
     const db = await getLobehubQueryClient();
-    const [row] = await db.update('generation_topics', { id }, data as any);
+    const [row] = await db.update('generation_topics', { id }, data);
     return row as any;
   }
 

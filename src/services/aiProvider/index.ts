@@ -30,7 +30,7 @@ export class AiProviderService {
 
   toggleProviderEnabled = async (id: string, enabled: boolean) => {
     const db = await getLobehubQueryClient();
-    await db.update('ai_providers', { id }, { enabled } as any);
+    await db.update('ai_providers', { id }, { enabled });
   };
 
   updateAiProvider = async (id: string, value: any) => {
@@ -46,7 +46,7 @@ export class AiProviderService {
   updateAiProviderOrder = async (items: AiProviderSortMap[]) => {
     const db = await getLobehubQueryClient();
     await Promise.all(
-      items.map((item) => db.update('ai_providers', { id: item.id }, { sort: item.sort } as any)),
+      items.map((item) => db.update('ai_providers', { id: item.id }, { sort: item.sort })),
     );
   };
 

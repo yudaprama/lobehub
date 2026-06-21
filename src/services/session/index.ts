@@ -37,7 +37,7 @@ export class SessionService {
       group_id: group === 'default' ? null : (group ?? null),
       pinned: session.pinned ?? false,
       metadata: { ...config, ...meta },
-    } as any);
+    });
     return id;
   };
 
@@ -82,7 +82,7 @@ export class SessionService {
     if (data.pinned !== undefined) patch.pinned = data.pinned;
     if (data.meta !== undefined) patch.metadata = data.meta;
     if (data.updatedAt !== undefined) patch.updated_at = data.updatedAt;
-    await db.update('sessions', { id }, patch as any);
+    await db.update('sessions', { id }, patch);
   };
 
   searchSessions = (keywords: string): Promise<LobeSessions> => {
@@ -105,7 +105,7 @@ export class SessionService {
 
   createSessionGroup = async (name: string, sort?: number): Promise<string> => {
     const db = await getLobehubQueryClient();
-    const [row] = await db.insert('session_groups', { id: crypto.randomUUID(), name, sort } as any);
+    const [row] = await db.insert('session_groups', { id: crypto.randomUUID(), name, sort });
     return row?.id;
   };
 
@@ -121,14 +121,12 @@ export class SessionService {
 
   updateSessionGroup = async (id: string, value: Partial<SessionGroupItem>) => {
     const db = await getLobehubQueryClient();
-    await db.update('session_groups', { id }, value as any);
+    await db.update('session_groups', { id }, value);
   };
 
   updateSessionGroupOrder = async (sortMap: { id: string; sort: number }[]) => {
     const db = await getLobehubQueryClient();
-    await Promise.all(
-      sortMap.map(({ id, sort }) => db.update('session_groups', { id }, { sort } as any)),
-    );
+    await Promise.all(sortMap.map(({ id, sort }) => db.update('session_groups', { id }, { sort })));
   };
 }
 

@@ -68,7 +68,6 @@ class NotificationService {
       'notifications',
       { id: { in: ids } },
       { is_read: true, updated_at: new Date().toISOString() },
-      { camelCase: false },
     );
   };
 
@@ -79,7 +78,6 @@ class NotificationService {
       'notifications',
       { is_read: false, is_archived: false },
       { is_read: true, updated_at: new Date().toISOString() },
-      { camelCase: false },
     );
   };
 
@@ -90,7 +88,6 @@ class NotificationService {
       'notifications',
       { id },
       { is_archived: true, updated_at: new Date().toISOString() },
-      { camelCase: false },
     );
   };
 
@@ -101,7 +98,6 @@ class NotificationService {
       'notifications',
       { is_archived: false },
       { is_archived: true, updated_at: new Date().toISOString() },
-      { camelCase: false },
     );
   };
 }

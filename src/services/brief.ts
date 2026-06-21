@@ -13,7 +13,7 @@ class BriefService {
 
   markRead = async (id: string) => {
     const db = await getLobehubQueryClient();
-    const [row] = await db.update('briefs', { id }, { read_at: new Date().toISOString() } as any);
+    const [row] = await db.update('briefs', { id }, { read_at: new Date().toISOString() });
     return row ?? null;
   };
 

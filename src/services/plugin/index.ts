@@ -38,11 +38,15 @@ export class PluginService {
       size: 1,
     });
     if (existing.length > 0) {
-      await db.update('user_installed_plugins', { identifier: (plugin as any).identifier }, {
-        custom_params: plugin.customParams,
-        manifest: plugin.manifest,
-        settings: plugin.settings,
-      } as any);
+      await db.update(
+        'user_installed_plugins',
+        { identifier: (plugin as any).identifier },
+        {
+          custom_params: plugin.customParams,
+          manifest: plugin.manifest,
+          settings: plugin.settings,
+        },
+      );
     } else {
       await db.insert('user_installed_plugins', {
         custom_params: plugin.customParams,
@@ -50,7 +54,7 @@ export class PluginService {
         manifest: plugin.manifest,
         settings: plugin.settings,
         type: plugin.type,
-      } as any);
+      });
     }
   };
 
@@ -82,16 +86,20 @@ export class PluginService {
 
   updatePlugin = async (id: string, value: Partial<LobeToolCustomPlugin>): Promise<void> => {
     const db = await getLobehubQueryClient();
-    await db.update('user_installed_plugins', { identifier: id }, {
-      custom_params: value.customParams,
-      manifest: value.manifest,
-      settings: value.settings,
-    } as any);
+    await db.update(
+      'user_installed_plugins',
+      { identifier: id },
+      {
+        custom_params: value.customParams,
+        manifest: value.manifest,
+        settings: value.settings,
+      },
+    );
   };
 
   updatePluginManifest = async (id: string, manifest: ToolManifest): Promise<void> => {
     const db = await getLobehubQueryClient();
-    await db.update('user_installed_plugins', { identifier: id }, { manifest } as any);
+    await db.update('user_installed_plugins', { identifier: id }, { manifest });
   };
 
   removeAllPlugins = async (): Promise<void> => {
@@ -105,7 +113,7 @@ export class PluginService {
     _signal?: AbortSignal,
   ): Promise<void> => {
     const db = await getLobehubQueryClient();
-    await db.update('user_installed_plugins', { identifier: id }, { settings } as any);
+    await db.update('user_installed_plugins', { identifier: id }, { settings });
   };
 }
 

@@ -52,7 +52,7 @@ export class ThreadService {
       metadata: params.metadata ?? null,
       last_active_at: new Date().toISOString(),
       accessed_at: new Date().toISOString(),
-    } as any);
+    });
     return (row as { id: string })?.id;
   };
 

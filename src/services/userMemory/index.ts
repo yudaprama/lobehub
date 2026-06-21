@@ -53,7 +53,7 @@ class UserMemoryService {
       tags: (params as any).tags ?? null,
       metadata: (params as any).metadata ?? null,
       status: 'active',
-    } as any);
+    });
     await db.insert('user_memories_activities', {
       user_memory_id: parentId,
       type: (params as any).type ?? 'general',
@@ -69,7 +69,7 @@ class UserMemoryService {
       feedback: (params as any).feedback ?? null,
       metadata: (params as any).metadata ?? null,
       tags: (params as any).tags ?? null,
-    } as any);
+    });
     return { id: parentId, success: true } as unknown as AddActivityMemoryResult;
   };
 
@@ -89,7 +89,7 @@ class UserMemoryService {
       tags: (params as any).tags ?? null,
       metadata: (params as any).metadata ?? null,
       status: 'active',
-    } as any);
+    });
     await db.insert('user_memories_contexts', {
       user_memory_ids: (params as any).userMemoryIds ?? null,
       title: (params as any).title ?? null,
@@ -100,7 +100,7 @@ class UserMemoryService {
       associated_subjects: (params as any).associatedSubjects ?? null,
       metadata: (params as any).metadata ?? null,
       tags: (params as any).tags ?? null,
-    } as any);
+    });
     return { id: parentId, success: true } as unknown as AddContextMemoryResult;
   };
 
@@ -120,7 +120,7 @@ class UserMemoryService {
       tags: (params as any).tags ?? null,
       metadata: (params as any).metadata ?? null,
       status: 'active',
-    } as any);
+    });
     await db.insert('user_memories_experiences', {
       user_memory_id: parentId,
       type: (params as any).type ?? null,
@@ -132,7 +132,7 @@ class UserMemoryService {
       score_confidence: (params as any).scoreConfidence ?? null,
       metadata: (params as any).metadata ?? null,
       tags: (params as any).tags ?? null,
-    } as any);
+    });
     return { id: parentId, success: true } as unknown as AddExperienceMemoryResult;
   };
 
@@ -150,7 +150,7 @@ class UserMemoryService {
       tags: (params as any).tags ?? null,
       metadata: (params as any).metadata ?? null,
       status: 'active',
-    } as any);
+    });
     await db.insert('user_memories_identities', {
       user_memory_id: parentId,
       type: (params as any).type ?? null,
@@ -159,7 +159,7 @@ class UserMemoryService {
       role: (params as any).role ?? null,
       metadata: (params as any).metadata ?? null,
       tags: (params as any).tags ?? null,
-    } as any);
+    });
     return { id: parentId, success: true } as unknown as AddIdentityMemoryResult;
   };
 
@@ -179,7 +179,7 @@ class UserMemoryService {
       tags: (params as any).tags ?? null,
       metadata: (params as any).metadata ?? null,
       status: 'active',
-    } as any);
+    });
     await db.insert('user_memories_preferences', {
       user_memory_id: parentId,
       type: (params as any).type ?? null,
@@ -188,7 +188,7 @@ class UserMemoryService {
       score_priority: (params as any).scorePriority ?? null,
       metadata: (params as any).metadata ?? null,
       tags: (params as any).tags ?? null,
-    } as any);
+    });
     return { id: parentId, success: true } as unknown as AddPreferenceMemoryResult;
   };
 
