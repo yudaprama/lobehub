@@ -74,6 +74,20 @@ export async function getLobehubClient() {
   return client.forSchema<TableTypes>('lobehub', 'public');
 }
 
+/**
+ * LobehubClient — typed, auto-camelCased.
+ *
+ * Most insert/update payloads no longer need `as any` (SDK 0.10.0
+ * types match runtime after DB migration 0114 + pg-to-ts fork's
+ * DB DEFAULT detection). Remaining `as any` casts are limited to:
+ *
+ *  1. `(params as any).property` — property access on loosely-typed
+ *     zod schemas (e.g. userMemory service)
+ *  2. `(row as any) ?? undefined` — return type coercions
+ *  3. `client.insert(...)` — old PrestClient calls (untyped, being
+ *     migrated to LobehubClient)
+ *  4. `Record<string, any>` — dynamic records where tsgo can't narrow
+ */
 export async function getLobehubQueryClient() {
   const client = await getPrestClient();
   return lobehubClient(client);

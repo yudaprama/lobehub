@@ -94,10 +94,12 @@ from Supabase by the local `pg-to-ts` fork.
   `cd prest-js-sdk && bun run gen-types` (requires
   `$PREST_PG_URL_LOBEHUB`). Commit the diff and bump the SDK via
   changeset. CI publishes to npm on merge.
-- The local `pg-to-ts` fork carries two fixes upstream 4.1.1 lacks:
+- The local `pg-to-ts` fork carries three fixes upstream 4.1.1 lacks:
   `user_id` is always optional in `*Input` types (pREST middleware
-  injects it), and `tsvector`/`vector` columns map to `string`/`number[]`
-  instead of `any`.
+  injects it), `tsvector`/`vector` columns map to `string`/`number[]`
+  instead of `any`, and DB DEFAULT columns are detected via
+  `information_schema.columns` and made optional in `*Input` types
+  (so services can omit server-generated fields without `as any`).
 
 ---
 
