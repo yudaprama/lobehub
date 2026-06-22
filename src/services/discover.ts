@@ -188,7 +188,7 @@ function mapModelDetail(row: MarketModelDetailRow): DiscoverModelDetail {
   } as any;
 }
 
-function mapProviderRow(row: MarketProviderListRow): DiscoverProviderItem {
+function mapProviderRow(row: Omit<MarketProviderListRow, 'sort'>): DiscoverProviderItem {
   return {
     checkModel: row.checkModel ?? undefined,
     config: row.config ?? undefined,
