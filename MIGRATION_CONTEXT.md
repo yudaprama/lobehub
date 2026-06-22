@@ -2,13 +2,14 @@
 
 ## State saat ini (DONE)
 
-### prest-js-sdk (npm: `prest-js-sdk@0.10.0`)
+### prest-js-sdk (npm: `prest-js-sdk@0.11.0`)
 
 - ✅ `CamelTableTypes` — type-level snake→camel conversion
 - ✅ `LobehubClient` defaults `camelCase: true` di semua method
-- ✅ `user_id` optional di semua `*Input` types (DB DEFAULT server-side)
+- ✅ `user_id` optional di semua `*Input` types (pREST middleware injects it)
 - ✅ `tsvector` → `string`, `vector` (pgvector) → `number[]`
 - ✅ DB DEFAULT detection — `hasDefault` columns optional di `*Input` types
+- ✅ UUID primary key detection — PK + UUID-ish type (uuid|text|varchar) optional
 - ✅ Published via GitHub Actions CI (changeset flow)
 - Repo: `github.com/yudaprama/prest-js-sdk` (branch `master`)
 
@@ -21,8 +22,9 @@
   - generationBatch, plugin, file, userMemory
   - generationTopic, notebook, ApiKey (React component)
   - task, session
-- ✅ **52 `as any` casts removed** — SDK 0.10.0 types match runtime after DB migration 0114
-- ✅ **DB migration 0114** — adds `sessions.metadata`, `user_settings.interests/preference/guide/settings`, DEFAULTs for `user_memories.last_accessed_at`, child memory table IDs, `generation_topics.id`
+- ✅ **Uniform `as any` policy** di semua insert/update payload (\~27-40 casts)
+  - Decision: preserve casts — document Zod↔SDK type gaps, not missing id fields
+  - SDK 0.11.0's UUID PK optional is nice-to-have, doesn't remove existing casts
 - ✅ Removed `src/libs/prest/tables.ts` (hand-written duplicate) → consolidate ke SDK's `TableTypes`
 - ✅ CI setup: `type-check.yml` (tsgo) + `type-check-failure.yml` (auto-file dedupe-hashed issues)
 - ✅ Removed 31 other GitHub workflows (keep only type-check)
@@ -31,6 +33,7 @@
 ### pg-to-ts fork (local: `/Users/yuda/ai-orchestration/pg-to-ts/`)
 
 - ✅ DB DEFAULT detection (`hasDefault` from `information_schema.columns`)
+- ✅ UUID primary key detection (PK + UUID-ish type → optional in \*Input)
 - ✅ `user_id` always optional in `*Input` types (pREST middleware injects it)
 - ✅ `tsvector` → `string`, `vector` → `number[]`
 - ❌ Not yet published to npm (still requires local `../pg-to-ts` sibling dir)
@@ -42,9 +45,9 @@
      ↓
 [pREST] (returns snake_case)
      ↓
-[prest-js-sdk 0.10.0] (LobehubClient + CamelTableTypes → auto-camelCase)
+[prest-js-sdk 0.11.0] (LobehubClient + CamelTableTypes → auto-camelCase)
      ↓
-[lobehub services] (panggil db.select/insert/update/delete, minimal `as any`)
+[lobehub services] (panggil db.select/insert/update/delete, uniform `as any`)
      ↓
 [Zustand stores / UI] (expect camelCase)
 ```
