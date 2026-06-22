@@ -84,7 +84,12 @@ class AgentService {
    * Check if an agent with the given marketIdentifier already exists
    */
   checkByMarketIdentifier = async (marketIdentifier: string): Promise<boolean> => {
-    return lambdaClient.agent.checkByMarketIdentifier.query({ marketIdentifier });
+    const db = await getLobehubQueryClient();
+    const rows = await db.select('agents', {
+      where: { market_identifier: marketIdentifier },
+      limit: 1,
+    });
+    return rows.length > 0;
   };
 
   /**
@@ -92,7 +97,13 @@ class AgentService {
    * @returns agent id if exists, null otherwise
    */
   getAgentByMarketIdentifier = async (marketIdentifier: string): Promise<string | null> => {
-    return lambdaClient.agent.getAgentByMarketIdentifier.query({ marketIdentifier });
+    const db = await getLobehubQueryClient();
+    const rows = await db.select('agents', {
+      where: { market_identifier: marketIdentifier },
+      order: ['updated_at:desc'],
+      limit: 1,
+    });
+    return (rows[0] as any)?.id ?? null;
   };
 
   /**
@@ -166,39 +177,58 @@ class AgentService {
     knowledgeBaseId: string,
     enabled?: boolean,
   ) => {
-    return lambdaClient.agent.createAgentKnowledgeBase.mutate({
-      agentId,
-      enabled,
-      knowledgeBaseId,
-    });
+    const db = await getLobehubQueryClient();
+    await db.insert('agents_knowledge_bases', {
+      agent_id: agentId,
+      knowledge_base_id: knowledgeBaseId,
+      enabled: enabled ?? true,
+    } as any);
   };
 
   deleteAgentKnowledgeBase = async (agentId: string, knowledgeBaseId: string) => {
-    return lambdaClient.agent.deleteAgentKnowledgeBase.mutate({ agentId, knowledgeBaseId });
+    const db = await getLobehubQueryClient();
+    await db.delete('agents_knowledge_bases', {
+      agent_id: agentId,
+      knowledge_base_id: knowledgeBaseId,
+    });
   };
 
   toggleKnowledgeBase = async (agentId: string, knowledgeBaseId: string, enabled?: boolean) => {
-    return lambdaClient.agent.toggleKnowledgeBase.mutate({
-      agentId,
-      enabled,
-      knowledgeBaseId,
-    });
+    const db = await getLobehubQueryClient();
+    await db.update(
+      'agents_knowledge_bases',
+      { agent_id: agentId, knowledge_base_id: knowledgeBaseId },
+      { enabled } as any,
+    );
   };
 
   createAgentFiles = async (agentId: string, fileIds: string[], enabled?: boolean) => {
-    return lambdaClient.agent.createAgentFiles.mutate({ agentId, enabled, fileIds });
+    const db = await getLobehubQueryClient();
+    const existing = await db.select('agents_files', {
+      where: { agent_id: agentId, file_id: { in: fileIds } },
+    });
+    const existingIds = new Set((existing as any[]).map((r) => r.fileId ?? r.file_id));
+    const newFileIds = fileIds.filter((id) => !existingIds.has(id));
+    if (newFileIds.length > 0) {
+      await db.insertBatch(
+        'agents_files',
+        newFileIds.map((fileId) => ({
+          agent_id: agentId,
+          file_id: fileId,
+          enabled: enabled ?? true,
+        })) as any,
+      );
+    }
   };
 
   deleteAgentFile = async (agentId: string, fileId: string) => {
-    return lambdaClient.agent.deleteAgentFile.mutate({ agentId, fileId });
+    const db = await getLobehubQueryClient();
+    await db.delete('agents_files', { agent_id: agentId, file_id: fileId });
   };
 
   toggleFile = async (agentId: string, fileId: string, enabled?: boolean) => {
-    return lambdaClient.agent.toggleFile.mutate({
-      agentId,
-      enabled,
-      fileId,
-    });
+    const db = await getLobehubQueryClient();
+    await db.update('agents_files', { agent_id: agentId, file_id: fileId }, { enabled } as any);
   };
 
   getFilesAndKnowledgeBases = async (agentId: string) => {

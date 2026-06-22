@@ -1,4 +1,5 @@
 import { type ConnectorToolPermission } from '@/database/schemas';
+import { getLobehubQueryClient } from '@/libs/prest/client';
 import { lambdaClient } from '@/libs/trpc/client';
 
 class ConnectorService {
@@ -31,8 +32,9 @@ class ConnectorService {
     return authorizationUrl;
   };
 
-  delete = (id: string): Promise<void> => {
-    return lambdaClient.connector.delete.mutate({ id });
+  delete = async (id: string): Promise<void> => {
+    const db = await getLobehubQueryClient();
+    await db.delete('user_connectors', { id });
   };
 
   update = (
