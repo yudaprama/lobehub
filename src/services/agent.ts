@@ -111,7 +111,11 @@ class AgentService {
    * @returns agent id if exists, null otherwise
    */
   getAgentByForkedFromIdentifier = async (forkedFromIdentifier: string): Promise<string | null> => {
-    return lambdaClient.agent.getAgentByForkedFromIdentifier.query({ forkedFromIdentifier });
+    const db = await getLobehubQueryClient();
+    const rows = await db.query<{ id: string }>('lobehub', 'agentByForkedFrom', {
+      forkedFromIdentifier,
+    });
+    return rows[0]?.id ?? null;
   };
 
   /**
@@ -302,23 +306,14 @@ class AgentService {
   /**
    * Count non-virtual agents with optional keyword filter, matching queryAgents conditions.
    *
-   * Tier 1 count when no keyword. Falls back to BFF for keyword searches
-   * since the Tier 2 template doesn't expose a count endpoint.
+   * Tier 2 stored query — handles both with-keyword and no-keyword cases.
    */
   countAgents = async (params?: { keyword?: string }) => {
-    if (params?.keyword) {
-      return lambdaClient.agent.countAgents.query(params);
-    }
-
     const db = await getLobehubQueryClient();
-    const rows = await db.select('agents', {
-      count: true,
-      where: { virtual: false },
-    });
-    const row = Array.isArray(rows)
-      ? (rows[0] as unknown as { count: number } | undefined)
-      : undefined;
-    return row?.count ?? 0;
+    const queryParams: Record<string, string | number | boolean> = {};
+    if (params?.keyword) queryParams.keyword = params.keyword;
+    const rows = await db.query<{ count: number }>('lobehub', 'agentsCount', queryParams);
+    return rows[0]?.count ?? 0;
   };
 
   /**
@@ -344,9 +339,14 @@ class AgentService {
 
   /**
    * Rank the user's agents by topic count (agent usage ranking).
+   *
+   * Tier 2 stored query — JOIN agents + topics, GROUP BY, HAVING count > 0.
    */
   rankAgents = async (limit?: number): Promise<AgentRankItem[]> => {
-    return lambdaClient.agent.rankAgents.query(limit);
+    const db = await getLobehubQueryClient();
+    return db.query<AgentRankItem>('lobehub', 'agentsRank', {
+      limit: limit ?? 10,
+    });
   };
 
   transferAgent = async (
