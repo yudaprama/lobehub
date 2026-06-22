@@ -32,7 +32,6 @@ import { type z } from 'zod';
 
 import { idGenerator } from '@/libs/idGenerator';
 import { getLobehubQueryClient } from '@/libs/prest/client';
-import { lambdaClient } from '@/libs/trpc/client';
 
 class UserMemoryService {
   // ── Add methods (parent insert + child insert) ──
@@ -235,8 +234,15 @@ class UserMemoryService {
     return (rows[0] ?? null) as any;
   };
 
-  getPersona = async () => {
-    return lambdaClient.userMemory.getPersona.query();
+  getPersona = async (): Promise<{ content: string; summary: string } | null> => {
+    const db = await getLobehubQueryClient();
+    const rows = await db.query<{ persona: string | null; tagline: string | null }>(
+      'lobehub',
+      'userMemoryPersonaCurrent',
+      {},
+    );
+    if (!rows.length) return null;
+    return { content: rows[0].persona ?? '', summary: rows[0].tagline ?? '' };
   };
 
   queryExperiences = async (params?: ExperienceListParams): Promise<ExperienceListResult> => {
@@ -346,8 +352,30 @@ class UserMemoryService {
   queryTaxonomyOptions = async (
     params?: QueryTaxonomyOptionsParams,
   ): Promise<QueryTaxonomyOptionsResult> => {
-    // Taxonomy options are relatively static — return from tRPC for now.
-    return lambdaClient.userMemories.queryTaxonomyOptions.query(params);
+    const db = await getLobehubQueryClient();
+    const rows = await db.query<{ count: number; taxonomy: string; value: string }>(
+      'lobehub',
+      'userMemoryTaxonomyOptions',
+      { limit: (params as any)?.limit ?? 50 },
+    );
+    const result: QueryTaxonomyOptionsResult = {
+      categories: [],
+      hasMore: {},
+      labels: [],
+      relationships: [],
+      roles: [],
+      statuses: [],
+      tags: [],
+      types: [],
+    };
+    for (const row of rows) {
+      const item = { count: row.count, value: row.value };
+      const key = row.taxonomy as keyof Omit<QueryTaxonomyOptionsResult, 'hasMore'>;
+      if (key in result) {
+        result[key].push(item);
+      }
+    }
+    return result;
   };
 
   queryIdentitiesForInjection = async (params?: { limit?: number }) => {
