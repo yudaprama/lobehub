@@ -184,7 +184,7 @@ export class MessageService {
     });
 
     const toolMsg = Array.isArray(toolMessages)
-      ? (toolMessages[0] as { id: string; parent_id: string | null })
+      ? (toolMessages[0] as unknown as { id: string; parent_id: string | null })
       : undefined;
     if (!toolMsg) return { success: false };
 
@@ -310,14 +310,10 @@ export class MessageService {
     ctx?: MessageQueryContext,
   ): Promise<UpdateMessageResult> => {
     const db = await getLobehubQueryClient();
-    await db.update(
-      'messages',
-      { id },
-      {
-        plugin: value,
-        updated_at: new Date().toISOString(),
-      },
-    );
+    await db.update('messages', { id }, {
+      plugin: value,
+      updated_at: new Date().toISOString(),
+    } as any);
     return { success: true };
   };
 
