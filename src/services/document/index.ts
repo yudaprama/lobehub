@@ -3,6 +3,7 @@ import { type DocumentItem } from '@lobechat/database/schemas';
 import type { Filter } from 'prest-js-sdk';
 
 import { egentFetch, getEgentUrl } from '@/libs/egent/client';
+import { idGenerator } from '@/libs/idGenerator';
 import { getLobehubQueryClient, getPrestClient } from '@/libs/prest/client';
 import { lambdaClient } from '@/libs/trpc/client';
 import type {
@@ -130,11 +131,42 @@ const autosavedOnceIds = new Set<string>();
 
 export class DocumentService {
   async createDocument(params: CreateDocumentParams): Promise<DocumentItem> {
-    return lambdaClient.document.createDocument.mutate(params);
+    const db = await getLobehubQueryClient();
+    const id = idGenerator('documents');
+    await db.insert('documents', {
+      id,
+      title: params.title,
+      content: params.content ?? null,
+      editor_data: params.editorData ?? null,
+      file_type: params.fileType ?? 'markdown',
+      metadata: params.metadata ?? null,
+      parent_id: params.parentId ?? null,
+      slug: params.slug ?? null,
+      knowledge_base_id: params.knowledgeBaseId ?? null,
+    } as any);
+    return { id } as DocumentItem;
   }
 
   async createDocuments(documents: CreateDocumentParams[]): Promise<DocumentItem[]> {
-    return lambdaClient.document.createDocuments.mutate({ documents });
+    const db = await getLobehubQueryClient();
+    const results = await Promise.all(
+      documents.map(async (params) => {
+        const id = idGenerator('documents');
+        await db.insert('documents', {
+          id,
+          title: params.title,
+          content: params.content ?? null,
+          editor_data: params.editorData ?? null,
+          file_type: params.fileType ?? 'markdown',
+          metadata: params.metadata ?? null,
+          parent_id: params.parentId ?? null,
+          slug: params.slug ?? null,
+          knowledge_base_id: params.knowledgeBaseId ?? null,
+        } as any);
+        return { id } as DocumentItem;
+      }),
+    );
+    return results;
   }
 
   async queryDocuments(params?: {

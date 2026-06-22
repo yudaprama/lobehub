@@ -1,4 +1,5 @@
 import { type SidebarAgentItem, type SidebarAgentListResponse } from '@/database/repositories/home';
+import { getLobehubQueryClient } from '@/libs/prest/client';
 import { lambdaClient } from '@/libs/trpc/client';
 
 export interface HomeDailyBriefPair {
@@ -29,15 +30,26 @@ export class HomeService {
   /**
    * Search agents by keyword
    */
-  searchAgents = (keyword: string): Promise<SidebarAgentItem[]> => {
-    return lambdaClient.home.searchAgents.query({ keyword });
+  searchAgents = async (keyword: string): Promise<SidebarAgentItem[]> => {
+    const db = await getLobehubQueryClient();
+    const rows = await db.select('agents', {
+      camelCase: true,
+      where: { title: { ilike: `%${keyword}%` } },
+      order: ['updated_at:desc'],
+      size: 20,
+    });
+    return (rows ?? []) as unknown as SidebarAgentItem[];
   };
 
   /**
    * Update an agent's session group
    */
-  updateAgentSessionGroupId = (agentId: string, sessionGroupId: string | null): Promise<void> => {
-    return lambdaClient.home.updateAgentSessionGroupId.mutate({ agentId, sessionGroupId }) as any;
+  updateAgentSessionGroupId = async (
+    agentId: string,
+    sessionGroupId: string | null,
+  ): Promise<void> => {
+    const db = await getLobehubQueryClient();
+    await db.update('agents', { id: agentId }, { session_group_id: sessionGroupId } as any);
   };
 }
 
