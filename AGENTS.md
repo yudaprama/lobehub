@@ -44,7 +44,7 @@ pREST returns Postgres column names in **snake_case** (`saved_at`,
 `save_source`, `document_id`). Frontend types and serializers expect
 **camelCase** (`savedAt`, `saveSource`, `documentId`).
 
-**How this is enforced now (SDK ≥ 0.9.0):**
+**How this is enforced now (SDK ≥ 0.11.0):**
 
 - **`getLobehubQueryClient()` → `LobehubClient`** — defaults
   `camelCase: true` on every method (select / insert / update / delete
@@ -87,19 +87,26 @@ schema types. It has been removed. The single source of truth is now
 `TableTypes` exported from `prest-js-sdk/lobehub` — auto-generated
 from Supabase by the local `pg-to-ts` fork.
 
-- **Do NOT recreate `src/libs/prest/tables.ts`** or a similar local
-  schema file. If you need a table's row/input type, import
-  `TableTypes` from `prest-js-sdk/lobehub`.
-- **Regeneration** is a manual step when the Supabase schema changes:
-  `cd prest-js-sdk && bun run gen-types` (requires
-  `$PREST_PG_URL_LOBEHUB`). Commit the diff and bump the SDK via
-  changeset. CI publishes to npm on merge.
-- The local `pg-to-ts` fork carries three fixes upstream 4.1.1 lacks:
-  `user_id` is always optional in `*Input` types (pREST middleware
-  injects it), `tsvector`/`vector` columns map to `string`/`number[]`
-  instead of `any`, and DB DEFAULT columns are detected via
-  `information_schema.columns` and made optional in `*Input` types
-  (so services can omit server-generated fields without `as any`).
+**SDK version:** `0.11.0` (current)
+
+**SDK features (from pg-to-ts fork):**
+
+- `CamelTableTypes` — type-level snake→camel conversion
+- `user_id` always optional in `*Input` types (pREST middleware injects it)
+- DB DEFAULT detection — `hasDefault` columns optional in `*Input` types
+- UUID primary key detection — PK + UUID-ish type (uuid|text|varchar) optional in `*Input`
+- `tsvector` → `string`, `vector` → `number[]`
+
+**DO NOT recreate `src/libs/prest/tables.ts`** or a similar local
+schema file. If you need a table's row/input type, import
+`TableTypes` from `prest-js-sdk/lobehub`.
+
+**Regeneration** is a manual step when the Supabase schema changes:
+`cd prest-js-sdk && bun run gen-types` (requires
+`$PREST_PG_URL_LOBEHUB`). Commit the diff and bump the SDK via
+changeset. CI publishes to npm on merge.
+
+**pg-to-ts fork** is local (`/Users/yuda/ai-orchestration/pg-to-ts/`), not yet published to npm. Future work: publish as `@yudaprama/pg-to-ts` for self-contained SDK.
 
 ---
 
@@ -126,6 +133,113 @@ new issue opens if they reappear.
   calls, streaming, or Go-specific libraries. Route through
   `egentFetch` / `lambdaClient`. This is the _only_ tier that
   justifies new Go handlers.
+
+---
+
+### 6. Uniform `as any` policy on insert/update payloads
+
+All `db.insert()` / `db.update()` payloads cast to `as any`:
+
+```ts
+await db.insert('table_name', {
+  snake_case_field: value,
+  // ...
+} as any);
+
+await db.update('table_name', { id }, {
+  snake_case_field: value,
+} as any);
+```
+
+**Why uniform `as any`:**
+
+- SDK's `*Input` types are auto-generated from DB schema
+- Zod schemas (from `@lobechat/memory-user-memory/schemas`, etc.) differ from SDK types
+- Some DB columns (`plugin`, `metadata`, `interests`) aren't in SDK types (JSONB not fully mapped)
+- Legacy param types use different field names than SDK expects
+- `as any` documents the gap — honest signal "SDK type doesn't match runtime"
+
+**DO NOT try to remove `as any` casts** — they're not bugs, they're documentation. Proper fix would require:
+
+1. Update all Zod schemas to match SDK types (breaking change)
+2. Regenerate SDK types with full JSONB mapping (complex)
+3. Align all legacy param types (large refactor)
+
+Until those happen, uniform `as any` is the pragmatic choice.
+
+**When to add `as any`:**
+
+- New service method calls `db.insert()` or `db.update()` → add `as any` on payload
+- Exception: payload is empty `{}` or single primitive field → skip cast
+
+---
+
+### 7. Service conversion pattern (for new services)
+
+When converting a service from `getPrestClient()` / `getLobehubClient()` to `getLobehubQueryClient()`:
+
+1. **Replace client import:**
+
+   ```ts
+   // Before
+   import { getPrestClient } from '@/libs/prest/client';
+   const client = await getPrestClient();
+
+   // After
+   import { getLobehubQueryClient } from '@/libs/prest/client';
+   const db = await getLobehubQueryClient();
+   ```
+
+2. **Update method calls:**
+
+   ```ts
+   // Before (raw PrestClient)
+   await client.select('lobehub', 'public', 'table_name', { ... });
+   await client.insert('lobehub', 'public', 'table_name', payload);
+
+   // After (LobehubClient, defaults camelCase: true)
+   await db.select('table_name', { ... });
+   await db.insert('table_name', payload as any);
+   ```
+
+3. **Preserve snake_case in WHERE / payloads:**
+   - WHERE clauses use snake_case (`{ user_id: 'x' }`) — those are Postgres column names
+   - Insert/update payloads use snake_case — SDK types don't fully map JSONB
+   - Response is camelCase by default (LobehubClient handles conversion)
+
+4. **Add `as any` on insert/update payloads** (rule #6)
+
+5. **Test with CI** — push to `main`, wait for `type-check.yml` to pass
+
+**Example conversion:**
+
+```ts
+// Before
+import { getPrestClient } from '@/libs/prest/client';
+
+class ExampleService {
+  createItem = async (params: CreateItemParams) => {
+    const client = await getPrestClient();
+    await client.insert('lobehub', 'public', 'items', {
+      name: params.name,
+      user_id: params.userId,
+    });
+  };
+}
+
+// After
+import { getLobehubQueryClient } from '@/libs/prest/client';
+
+class ExampleService {
+  createItem = async (params: CreateItemParams) => {
+    const db = await getLobehubQueryClient();
+    await db.insert('items', {
+      name: params.name,
+      user_id: params.userId,
+    } as any);
+  };
+}
+```
 
 ---
 
