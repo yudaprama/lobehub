@@ -17,7 +17,7 @@ import { type HeatmapsProps } from '@lobehub/charts';
 import type { Filter } from 'prest-js-sdk';
 
 import { idGenerator } from '@/libs/idGenerator';
-import { getLobehubQueryClient, getWorkspaceParams } from '@/libs/prest/client';
+import { getLobehubQueryClient, getPrestClient, getWorkspaceParams } from '@/libs/prest/client';
 import { lambdaClient } from '@/libs/trpc/client';
 
 import { abortableRequest } from '../utils/abortableRequest';
@@ -443,12 +443,25 @@ export class MessageService {
     messages: UIChatMessage[];
     messagesToSummarize: UIChatMessage[];
   }> => {
-    const result = await lambdaClient.message.createCompressionGroup.mutate(params);
-    return {
-      messageGroupId: result.messageGroupId,
-      messages: (result.messages || []) as unknown as UIChatMessage[],
-      messagesToSummarize: (result.messagesToSummarize || []) as unknown as UIChatMessage[],
+    const client = await getPrestClient();
+    const metadata = JSON.stringify({ originalMessageCount: params.messageIds.length });
+    const rows = await client.query<{ id: string }>('lobehub', 'compressionCreateGroup', {
+      topicId: params.topicId,
+      messageIds: params.messageIds.join(','),
+      metadata,
+    });
+    const messageGroupId = rows[0]?.id ?? '';
+
+    const queryContext = {
+      agentId: params.agentId,
+      groupId: params.groupId,
+      threadId: params.threadId,
+      topicId: params.topicId,
     };
+    const messages = await this.getMessages(queryContext);
+    const messagesToSummarize = messages.filter((m) => params.messageIds.includes(m.id));
+
+    return { messageGroupId, messages, messagesToSummarize };
   };
 
   /**
@@ -462,10 +475,20 @@ export class MessageService {
     threadId?: string | null;
     topicId: string;
   }): Promise<{ messages?: UIChatMessage[] }> => {
-    const result = await lambdaClient.message.finalizeCompression.mutate(params);
-    return {
-      messages: (result.messages || []) as unknown as UIChatMessage[],
+    const client = await getPrestClient();
+    await client.query('lobehub', 'compressionFinalize', {
+      messageGroupId: params.messageGroupId,
+      content: params.content,
+    });
+
+    const queryContext = {
+      agentId: params.agentId,
+      groupId: params.groupId,
+      threadId: params.threadId,
+      topicId: params.topicId,
     };
+    const messages = await this.getMessages(queryContext);
+    return { messages };
   };
 
   /**
@@ -481,10 +504,15 @@ export class MessageService {
     expanded?: boolean;
     messageGroupId: string;
   }): Promise<{ messages: UIChatMessage[] }> => {
-    const result = await lambdaClient.message.updateMessageGroupMetadata.mutate(params);
-    return {
-      messages: (result.messages || []) as unknown as UIChatMessage[],
-    };
+    const client = await getPrestClient();
+    const metadata = JSON.stringify({ expanded: params.expanded ?? false });
+    await client.query('lobehub', 'compressionUpdateMetadata', {
+      messageGroupId: params.messageGroupId,
+      metadata,
+    });
+
+    const messages = await this.getMessages(params.context);
+    return { messages };
   };
 
   /**
@@ -497,8 +525,19 @@ export class MessageService {
     threadId?: string | null;
     topicId: string;
   }): Promise<{ messages: UIChatMessage[] }> => {
-    const result = await lambdaClient.message.cancelCompression.mutate(params);
-    return { messages: (result.messages || []) as unknown as UIChatMessage[] };
+    const client = await getPrestClient();
+    await client.query('lobehub', 'compressionCancel', {
+      messageGroupId: params.messageGroupId,
+    });
+
+    const queryContext = {
+      agentId: params.agentId,
+      groupId: params.groupId,
+      threadId: params.threadId,
+      topicId: params.topicId,
+    };
+    const messages = await this.getMessages(queryContext);
+    return { messages };
   };
 }
 

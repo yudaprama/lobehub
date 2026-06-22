@@ -9,7 +9,9 @@ import {
   type InstallReportRequest,
   type PluginEventRequest,
 } from '@lobehub/market-types';
+import type { Json } from 'prest-js-sdk/lobehub';
 
+import { getLobehubQueryClient } from '@/libs/prest/client';
 import { lambdaClient } from '@/libs/trpc/client';
 import { globalHelpers } from '@/store/global/helpers';
 import { useUserStore } from '@/store/user';
@@ -19,10 +21,13 @@ import {
   type AssistantMarketSource,
   type AssistantQueryParams,
   type DiscoverAssistantDetail,
+  type DiscoverAssistantItem,
   type DiscoverMcpDetail,
   type DiscoverModelDetail,
+  type DiscoverModelItem,
   type DiscoverPluginDetail,
   type DiscoverProviderDetail,
+  type DiscoverProviderItem,
   type DiscoverSkillDetail,
   type DiscoverUserProfile,
   type GroupAgentQueryParams,
@@ -41,6 +46,175 @@ import {
 } from '@/types/discover';
 import { type MCPPluginListParams } from '@/types/plugins';
 import { cleanObject } from '@/utils/object';
+
+// ─── SQL query row types (match exact SELECT columns in each .sql file) ───
+
+interface MarketAssistantListRow {
+  avatar: string | null;
+  category: string | null;
+  createdAt: string;
+  description: string | null;
+  identifier: string;
+  tags: Json;
+  title: string | null;
+}
+
+interface MarketAssistantDetailRow extends MarketAssistantListRow {
+  chatConfig: Json;
+  config: Json;
+  model: string | null;
+  openingMessage: string | null;
+  openingQuestions: string[] | null;
+  provider: string | null;
+  systemRole: string | null;
+}
+
+interface MarketAssistantCategoriesRow {
+  count: number;
+  tag: string;
+}
+
+interface MarketAssistantIdentifiersRow {
+  identifier: string;
+  title: string | null;
+  updatedAt: string;
+}
+
+interface MarketModelListRow {
+  abilities: Json;
+  contextWindowTokens: number | null;
+  createdAt: string;
+  description: string | null;
+  displayName: string | null;
+  enabled: boolean | null;
+  id: string;
+  organization: string | null;
+  parameters: Json;
+  pricing: Json;
+  providerId: string;
+  releasedAt: string | null;
+  sort: number | null;
+  source: string | null;
+  type: string;
+}
+
+interface MarketModelDetailRow extends MarketModelListRow {
+  config: Json;
+  settings: Json;
+}
+
+interface MarketProviderListRow {
+  checkModel: string | null;
+  config: Json;
+  createdAt: string;
+  description: string | null;
+  enabled: boolean | null;
+  fetchOnClient: boolean | null;
+  id: string;
+  logo: string | null;
+  name: string | null;
+  settings: Json;
+  sort: number | null;
+  source: string | null;
+}
+
+interface MarketProviderDetailRow extends Omit<MarketProviderListRow, 'sort'> {
+  keyVaults: string | null;
+}
+
+// ─── Row → FE type mappers (prest stored queries → discover types) ────────
+
+function mapAssistantRow(row: MarketAssistantListRow): DiscoverAssistantItem {
+  return {
+    author: '',
+    avatar: row.avatar ?? undefined,
+    category: row.category ?? undefined,
+    createdAt: row.createdAt,
+    description: row.description ?? '',
+    homepage: '',
+    identifier: row.identifier,
+    knowledgeCount: 0,
+    pluginCount: 0,
+    plugins: [],
+    tags: Array.isArray(row.tags) ? (row.tags as string[]) : [],
+    title: row.title ?? '',
+    tokenUsage: 0,
+  } as any;
+}
+
+function mapAssistantDetail(row: MarketAssistantDetailRow): DiscoverAssistantDetail {
+  return {
+    ...mapAssistantRow(row),
+    chatConfig: row.chatConfig ?? undefined,
+    config: row.config ?? undefined,
+    examples: [],
+    model: row.model ?? undefined,
+    openingMessage: row.openingMessage ?? undefined,
+    openingQuestions: row.openingQuestions ?? undefined,
+    provider: row.provider ?? undefined,
+    related: [],
+    systemRole: row.systemRole ?? '',
+  } as any;
+}
+
+function mapModelRow(row: MarketModelListRow): DiscoverModelItem {
+  return {
+    abilities: row.abilities ?? undefined,
+    contextWindowTokens: row.contextWindowTokens ?? undefined,
+    description: row.description ?? undefined,
+    displayName: row.displayName ?? row.id,
+    enabled: row.enabled ?? true,
+    id: row.id,
+    identifier: row.id,
+    organization: row.organization ?? undefined,
+    pricing: row.pricing ?? undefined,
+    providerCount: 1,
+    providerId: row.providerId ?? undefined,
+    providers: row.providerId ? [row.providerId] : [],
+    releasedAt: row.releasedAt ?? undefined,
+    source: row.source ?? undefined,
+    type: row.type ?? undefined,
+  } as any;
+}
+
+function mapModelDetail(row: MarketModelDetailRow): DiscoverModelDetail {
+  return {
+    ...mapModelRow(row),
+    config: row.config ?? undefined,
+    maxOutput: (row.parameters as Record<string, any> | null)?.max_output ?? undefined,
+    providers: [],
+    related: [],
+    settings: row.settings ?? undefined,
+  } as any;
+}
+
+function mapProviderRow(row: MarketProviderListRow): DiscoverProviderItem {
+  return {
+    checkModel: row.checkModel ?? undefined,
+    config: row.config ?? undefined,
+    description: row.description ?? undefined,
+    enabled: row.enabled ?? true,
+    fetchOnClient: row.fetchOnClient ?? undefined,
+    id: row.id,
+    identifier: row.id,
+    logo: row.logo ?? undefined,
+    modelCount: 0,
+    models: [],
+    name: row.name ?? '',
+    settings: row.settings ?? undefined,
+    source: row.source ?? undefined,
+  } as any;
+}
+
+function mapProviderDetail(row: MarketProviderDetailRow): DiscoverProviderDetail {
+  return {
+    ...mapProviderRow(row),
+    keyVaults: row.keyVaults ?? undefined,
+    models: [],
+    readme: undefined,
+    related: [],
+  } as any;
+}
 
 class DiscoverService {
   private _isRetrying = false;
@@ -73,13 +247,13 @@ class DiscoverService {
   getAssistantCategories = async (
     params: CategoryListQuery & { source?: AssistantMarketSource } = {},
   ): Promise<CategoryItem[]> => {
-    const locale = globalHelpers.getCurrentLanguage();
-    const { source, ...rest } = params;
-    return lambdaClient.market.getAssistantCategories.query({
-      ...rest,
-      locale,
-      source,
-    });
+    const db = await getLobehubQueryClient();
+    const rows = await db.query<MarketAssistantCategoriesRow>(
+      'lobehub',
+      'marketAssistantCategories',
+      {},
+    );
+    return rows.map((r) => ({ category: r.tag, count: r.count }));
   };
 
   getAssistantDetail = async (params: {
@@ -88,34 +262,50 @@ class DiscoverService {
     source?: AssistantMarketSource;
     version?: string;
   }): Promise<DiscoverAssistantDetail | undefined> => {
-    const locale = globalHelpers.getCurrentLanguage();
-    return lambdaClient.market.getAssistantDetail.query({
+    const db = await getLobehubQueryClient();
+    const rows = await db.query<MarketAssistantDetailRow>('lobehub', 'marketAssistantDetail', {
       identifier: params.identifier,
-      locale,
-      source: params.source,
-      version: params.version,
     });
+    if (!rows.length) return undefined;
+    return mapAssistantDetail(rows[0]);
   };
 
   getAssistantIdentifiers = async (
     params: { source?: AssistantMarketSource } = {},
   ): Promise<IdentifiersResponse> => {
-    return lambdaClient.market.getAssistantIdentifiers.query(params);
+    const db = await getLobehubQueryClient();
+    const rows = await db.query<MarketAssistantIdentifiersRow>(
+      'lobehub',
+      'marketAssistantIdentifiers',
+      {},
+    );
+    return rows.map((r) => ({ identifier: r.identifier, lastModified: r.updatedAt }));
   };
 
   getAssistantList = async (params: AssistantQueryParams = {}): Promise<AssistantListResponse> => {
-    await this.safeInjectMPToken();
-
-    const locale = globalHelpers.getCurrentLanguage();
-    return lambdaClient.market.getAssistantList.query(
-      {
-        ...params,
-        locale,
-        page: params.page ? Number(params.page) : 1,
-        pageSize: params.pageSize ? Number(params.pageSize) : 20,
-      },
-      { context: { showNotification: false } },
+    const db = await getLobehubQueryClient();
+    const page = params.page ? Number(params.page) : 1;
+    const pageSize = params.pageSize ? Number(params.pageSize) : 20;
+    const offset = (page - 1) * pageSize;
+    const queryParams: Record<string, string | number | boolean> = {
+      size: pageSize,
+      offset,
+    };
+    if (params.q) queryParams.q = params.q;
+    if (params.category) queryParams.tag = params.category;
+    const rows = await db.query<MarketAssistantListRow>(
+      'lobehub',
+      'marketAssistantList',
+      queryParams,
     );
+    const items = rows.map(mapAssistantRow);
+    return {
+      currentPage: page,
+      items,
+      pageSize,
+      totalCount: rows.length,
+      totalPages: Math.ceil(rows.length / pageSize),
+    };
   };
 
   getAgentsByPlugin = async (params: {
@@ -310,11 +500,12 @@ class DiscoverService {
     identifier: string;
     locale?: string;
   }): Promise<DiscoverModelDetail | undefined> => {
-    const locale = globalHelpers.getCurrentLanguage();
-    return lambdaClient.market.getModelDetail.query({
-      ...params,
-      locale,
+    const db = await getLobehubQueryClient();
+    const rows = await db.query<MarketModelDetailRow>('lobehub', 'marketModelDetail', {
+      id: params.identifier,
     });
+    if (!rows.length) return undefined;
+    return mapModelDetail(rows[0]);
   };
 
   getModelIdentifiers = async (): Promise<IdentifiersResponse> => {
@@ -322,13 +513,24 @@ class DiscoverService {
   };
 
   getModelList = async (params: ModelQueryParams = {}): Promise<ModelListResponse> => {
-    const locale = globalHelpers.getCurrentLanguage();
-    return lambdaClient.market.getModelList.query({
-      ...params,
-      locale,
-      page: params.page ? Number(params.page) : 1,
-      pageSize: params.pageSize ? Number(params.pageSize) : 20,
-    });
+    const db = await getLobehubQueryClient();
+    const page = params.page ? Number(params.page) : 1;
+    const pageSize = params.pageSize ? Number(params.pageSize) : 20;
+    const offset = (page - 1) * pageSize;
+    const queryParams: Record<string, string | number | boolean> = {
+      size: pageSize,
+      offset,
+    };
+    if (params.category) queryParams.providerId = params.category;
+    const rows = await db.query<MarketModelListRow>('lobehub', 'marketModelList', queryParams);
+    const items = rows.map(mapModelRow);
+    return {
+      currentPage: page,
+      items,
+      pageSize,
+      totalCount: rows.length,
+      totalPages: Math.ceil(rows.length / pageSize),
+    };
   };
 
   // ============================== Plugin Market ==============================
@@ -374,11 +576,12 @@ class DiscoverService {
     locale?: string;
     withReadme?: boolean;
   }): Promise<DiscoverProviderDetail | undefined> => {
-    const locale = globalHelpers.getCurrentLanguage();
-    return lambdaClient.market.getProviderDetail.query({
-      ...params,
-      locale,
+    const db = await getLobehubQueryClient();
+    const rows = await db.query<MarketProviderDetailRow>('lobehub', 'marketProviderDetail', {
+      id: params.identifier,
     });
+    if (!rows.length) return undefined;
+    return mapProviderDetail(rows[0]);
   };
 
   getProviderIdentifiers = async (): Promise<IdentifiersResponse> => {
@@ -386,13 +589,16 @@ class DiscoverService {
   };
 
   getProviderList = async (params: ProviderQueryParams = {}): Promise<ProviderListResponse> => {
-    const locale = globalHelpers.getCurrentLanguage();
-    return lambdaClient.market.getProviderList.query({
-      ...params,
-      locale,
-      page: params.page ? Number(params.page) : 1,
-      pageSize: params.pageSize ? Number(params.pageSize) : 20,
-    });
+    const db = await getLobehubQueryClient();
+    const rows = await db.query<MarketProviderListRow>('lobehub', 'marketProviderList', {});
+    const items = rows.map(mapProviderRow);
+    return {
+      currentPage: 1,
+      items,
+      pageSize: items.length,
+      totalCount: items.length,
+      totalPages: 1,
+    };
   };
 
   // ============================== User Profile ==============================
