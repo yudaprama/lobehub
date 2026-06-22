@@ -98,7 +98,7 @@ class ChatGroupService {
       camelCase: true,
       where: { id },
     });
-    return rows?.[0] as ChatGroupItem | undefined;
+    return rows?.[0] as unknown as ChatGroupItem | undefined;
   };
 
   getGroups = async (): Promise<ChatGroupItem[]> => {
@@ -107,7 +107,7 @@ class ChatGroupService {
       camelCase: true,
       order: ['updated_at:desc'],
     });
-    return (rows ?? []) as ChatGroupItem[];
+    return (rows ?? []) as unknown as ChatGroupItem[];
   };
 
   getGroupDetail = (id: string): Promise<AgentGroupDetail | null> => {
@@ -159,7 +159,7 @@ class ChatGroupService {
       where: { chat_group_id: groupId },
       order: ['order:asc'],
     });
-    return (rows ?? []) as ChatGroupAgentItem[];
+    return (rows ?? []) as unknown as ChatGroupAgentItem[];
   };
 
   /**
