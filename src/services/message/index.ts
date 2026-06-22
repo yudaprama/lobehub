@@ -17,7 +17,7 @@ import { type HeatmapsProps } from '@lobehub/charts';
 import type { Filter } from 'prest-js-sdk';
 
 import { idGenerator } from '@/libs/idGenerator';
-import { getPrestClient, getWorkspaceParams } from '@/libs/prest/client';
+import { getLobehubQueryClient, getWorkspaceParams } from '@/libs/prest/client';
 import { lambdaClient } from '@/libs/trpc/client';
 
 import { abortableRequest } from '../utils/abortableRequest';
@@ -36,9 +36,9 @@ export interface MessageQueryContext {
 
 export class MessageService {
   createMessage = async (params: CreateMessageParams): Promise<CreateMessageResult> => {
-    const client = await getPrestClient();
+    const db = await getLobehubQueryClient();
     const id = params.id || idGenerator('messages');
-    await client.insert('lobehub', 'public', 'messages', {
+    await db.insert('messages', {
       id,
       content: params.content ?? '',
       role: params.role,
@@ -49,7 +49,7 @@ export class MessageService {
       metadata: (params as any).metadata ?? null,
       model: (params as any).model ?? null,
       provider: (params as any).provider ?? null,
-    } as any);
+    });
     return { id, messages: [] };
   };
 
@@ -62,13 +62,13 @@ export class MessageService {
       return data as unknown as UIChatMessage[];
     }
 
-    const client = await getPrestClient();
+    const db = await getLobehubQueryClient();
 
     // Tier 2 stored SQL template joins message_translates / message_plugins /
     // message_tts / messages_files into one row per message. pREST scopes by
     // user via [[auth.user_id_filters]]; we still pass `groupId` for the
     // groupAssistantMessages narrow path.
-    const rows = await client.query<UIChatMessage>(
+    const rows = await db.query<UIChatMessage>(
       'lobehub',
       'messagesListByTopic',
       {
@@ -86,18 +86,20 @@ export class MessageService {
     range?: [string, string];
     startDate?: string;
   }): Promise<number> => {
-    const client = await getPrestClient();
+    const db = await getLobehubQueryClient();
 
     const where: Filter = {};
     if (params?.startDate) where.created_at = { gte: params.startDate };
     if (params?.endDate)
       where.created_at = { ...(where.created_at as object), lte: params.endDate };
 
-    const rows = await client.select<{ count: number }>('lobehub', 'public', 'messages', {
+    const rows = await db.select('messages', {
       count: true,
       ...(Object.keys(where).length ? { where } : {}),
     });
-    const row = Array.isArray(rows) ? rows[0] : undefined;
+    const row = Array.isArray(rows)
+      ? (rows[0] as unknown as { count: number } | undefined)
+      : undefined;
     return row?.count ?? 0;
   };
 
@@ -106,7 +108,7 @@ export class MessageService {
     range?: [string, string];
     startDate?: string;
   }): Promise<number> => {
-    const client = await getPrestClient();
+    const db = await getLobehubQueryClient();
     const query: Record<string, string> = {};
     if (params?.startDate) query.startDate = params.startDate;
     if (params?.endDate) query.endDate = params.endDate;
@@ -114,23 +116,23 @@ export class MessageService {
       query.startDate = params.range[0];
       query.endDate = params.range[1];
     }
-    const rows = await client.query<{ count: number }>('lobehub', 'messageWordCount', query);
+    const rows = await db.query<{ count: number }>('lobehub', 'messageWordCount', query);
     return rows[0]?.count ?? 0;
   };
 
   rankModels = async (): Promise<ModelRankItem[]> => {
-    const client = await getPrestClient();
-    return client.query<ModelRankItem>('lobehub', 'messageModelRank', {});
+    const db = await getLobehubQueryClient();
+    return db.query<ModelRankItem>('lobehub', 'messageModelRank', {});
   };
 
   getHeatmaps = async (): Promise<HeatmapsProps['data']> => {
-    const client = await getPrestClient();
-    return client.query<HeatmapsProps['data'][number]>('lobehub', 'messageHeatmaps', {});
+    const db = await getLobehubQueryClient();
+    return db.query<HeatmapsProps['data'][number]>('lobehub', 'messageHeatmaps', {});
   };
 
   getTokenHeatmaps = async (): Promise<HeatmapsProps['data']> => {
-    const client = await getPrestClient();
-    return client.query<HeatmapsProps['data'][number]>('lobehub', 'messageTokenHeatmaps', {});
+    const db = await getLobehubQueryClient();
+    return db.query<HeatmapsProps['data'][number]>('lobehub', 'messageTokenHeatmaps', {});
   };
 
   updateMessageError = async (
@@ -142,10 +144,8 @@ export class MessageService {
       ? value
       : { body: value, message: value.message, type: 'ApplicationRuntimeError' };
 
-    const client = await getPrestClient();
-    await client.update(
-      'lobehub',
-      'public',
+    const db = await getLobehubQueryClient();
+    await db.update(
       'messages',
       { id },
       {
@@ -157,15 +157,9 @@ export class MessageService {
   };
 
   updateMessagePluginArguments = async (id: string, value: string | Record<string, any>) => {
-    const client = await getPrestClient();
+    const db = await getLobehubQueryClient();
     const args = typeof value === 'string' ? value : JSON.stringify(value);
-    await client.update(
-      'lobehub',
-      'public',
-      'message_plugins',
-      { message_id: id },
-      { arguments: args },
-    );
+    await db.update('message_plugins', { message_id: id }, { arguments: args });
   };
 
   /**
@@ -181,28 +175,22 @@ export class MessageService {
     value: string | Record<string, unknown>,
     ctx?: MessageQueryContext,
   ) => {
-    const client = await getPrestClient();
+    const db = await getLobehubQueryClient();
     const args = typeof value === 'string' ? value : JSON.stringify(value);
 
-    const toolMessages = await client.select<{ id: string; parent_id: string | null }>(
-      'lobehub',
-      'public',
-      'messages',
-      { where: { role: 'tool' }, size: 1 },
-    );
+    const toolMessages = await db.select('messages', {
+      where: { role: 'tool' },
+      size: 1,
+    });
 
-    const toolMsg = Array.isArray(toolMessages) ? toolMessages[0] : undefined;
+    const toolMsg = Array.isArray(toolMessages)
+      ? (toolMessages[0] as { id: string; parent_id: string | null })
+      : undefined;
     if (!toolMsg) return { success: false };
 
-    await client.update('lobehub', 'public', 'messages', { id: toolMsg.id }, { content: args });
+    await db.update('messages', { id: toolMsg.id }, { content: args });
     if (toolMsg.parent_id) {
-      await client.update(
-        'lobehub',
-        'public',
-        'message_plugins',
-        { message_id: toolMsg.parent_id },
-        { arguments: args },
-      );
+      await db.update('message_plugins', { message_id: toolMsg.parent_id }, { arguments: args });
     }
     return { success: true } as { messages?: any[]; success: boolean };
   };
@@ -212,7 +200,7 @@ export class MessageService {
     value: Partial<UpdateMessageParams>,
     ctx?: MessageQueryContext,
   ): Promise<UpdateMessageResult> => {
-    const client = await getPrestClient();
+    const db = await getLobehubQueryClient();
 
     const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
     if (value.content !== undefined) patch.content = value.content;
@@ -231,25 +219,25 @@ export class MessageService {
     if (value.usage !== undefined) patch.usage = value.usage;
     if (value.toolCalls !== undefined) patch.tool_calls = value.toolCalls;
 
-    await client.update('lobehub', 'public', 'messages', { id }, patch);
+    await db.update('messages', { id }, patch);
     return { success: true };
   };
 
   updateMessageTranslate = async (id: string, translate: Partial<ChatTranslate> | false) => {
-    const client = await getPrestClient();
+    const db = await getLobehubQueryClient();
     if (translate === false) {
-      await client.delete('lobehub', 'public', 'message_translates', { id });
+      await db.delete('message_translates', { id });
     } else {
-      await client.update('lobehub', 'public', 'message_translates', { id }, translate as any);
+      await db.update('message_translates', { id }, translate);
     }
   };
 
   updateMessageTTS = async (id: string, tts: Partial<ChatTTS> | false) => {
-    const client = await getPrestClient();
+    const db = await getLobehubQueryClient();
     if (tts === false) {
-      await client.delete('lobehub', 'public', 'message_tts', { id });
+      await db.delete('message_tts', { id });
     } else {
-      await client.update('lobehub', 'public', 'message_tts', { id }, tts as any);
+      await db.update('message_tts', { id }, tts);
     }
   };
 
@@ -259,8 +247,8 @@ export class MessageService {
     ctx?: MessageQueryContext,
   ): Promise<UpdateMessageResult> => {
     return abortableRequest.execute(`message-metadata-${id}`, (signal) =>
-      getPrestClient().then(
-        (client) =>
+      getLobehubQueryClient().then(
+        (db) =>
           new Promise<UpdateMessageResult>((resolve, reject) => {
             if (signal?.aborted) {
               reject(new DOMException('Aborted', 'AbortError'));
@@ -274,24 +262,23 @@ export class MessageService {
             // we race the signal against the in-flight pREST call. The
             // underlying fetch may still complete in the background, but
             // the caller sees an aborted error and stops awaiting.
-            client
-              .update<UpdateMessageResult>(
-                'lobehub',
-                'public',
-                'messages',
-                { id },
-                { metadata: value, updated_at: new Date().toISOString() },
-              )
-              .then(
-                () => {
-                  signal?.removeEventListener('abort', onAbort);
-                  resolve({ success: true });
-                },
-                (err) => {
-                  signal?.removeEventListener('abort', onAbort);
-                  reject(err);
-                },
-              );
+            db.update(
+              'messages',
+              { id },
+              {
+                metadata: value,
+                updated_at: new Date().toISOString(),
+              },
+            ).then(
+              () => {
+                signal?.removeEventListener('abort', onAbort);
+                resolve({ success: true });
+              },
+              (err) => {
+                signal?.removeEventListener('abort', onAbort);
+                reject(err);
+              },
+            );
           }),
       ),
     );
@@ -302,14 +289,8 @@ export class MessageService {
     value: Record<string, any>,
     ctx?: MessageQueryContext,
   ): Promise<UpdateMessageResult> => {
-    const client = await getPrestClient();
-    await client.update(
-      'lobehub',
-      'public',
-      'message_plugins',
-      { message_id: id },
-      { state: value },
-    );
+    const db = await getLobehubQueryClient();
+    await db.update('message_plugins', { message_id: id }, { state: value });
     return { success: true };
   };
 
@@ -318,14 +299,8 @@ export class MessageService {
     error: ChatMessagePluginError | null,
     ctx?: MessageQueryContext,
   ): Promise<UpdateMessageResult> => {
-    const client = await getPrestClient();
-    await client.update(
-      'lobehub',
-      'public',
-      'message_plugins',
-      { message_id: id },
-      { error: error as any },
-    );
+    const db = await getLobehubQueryClient();
+    await db.update('message_plugins', { message_id: id }, { error });
     return { success: true };
   };
 
@@ -334,14 +309,12 @@ export class MessageService {
     value: Partial<Omit<MessagePluginItem, 'id'>>,
     ctx?: MessageQueryContext,
   ): Promise<UpdateMessageResult> => {
-    const client = await getPrestClient();
-    await client.update(
-      'lobehub',
-      'public',
+    const db = await getLobehubQueryClient();
+    await db.update(
       'messages',
       { id },
       {
-        plugin: value as any,
+        plugin: value,
         updated_at: new Date().toISOString(),
       },
     );
@@ -353,10 +326,8 @@ export class MessageService {
     data: UpdateMessageRAGParams,
     ctx?: MessageQueryContext,
   ): Promise<UpdateMessageResult> => {
-    const client = await getPrestClient();
-    await client.update(
-      'lobehub',
-      'public',
+    const db = await getLobehubQueryClient();
+    await db.update(
       'messages',
       { id },
       {
@@ -381,19 +352,19 @@ export class MessageService {
     },
     ctx?: MessageQueryContext,
   ): Promise<UpdateMessageResult> => {
-    const client = await getPrestClient();
+    const db = await getLobehubQueryClient();
     const now = new Date().toISOString();
 
     const msgPatch: Record<string, unknown> = { updated_at: now };
     if (value.content !== undefined) msgPatch.content = value.content;
     if (value.metadata !== undefined) msgPatch.metadata = value.metadata;
-    await client.update('lobehub', 'public', 'messages', { id }, msgPatch);
+    await db.update('messages', { id }, msgPatch);
 
     const pluginPatch: Record<string, unknown> = {};
     if (value.pluginState !== undefined) pluginPatch.state = value.pluginState;
     if (value.pluginError !== undefined) pluginPatch.error = value.pluginError;
     if (Object.keys(pluginPatch).length > 0) {
-      await client.update('lobehub', 'public', 'message_plugins', { message_id: id }, pluginPatch);
+      await db.update('message_plugins', { message_id: id }, pluginPatch);
     }
 
     return { success: true };
@@ -404,8 +375,8 @@ export class MessageService {
     // reshaping of the remaining message list. The pREST delete auto-scopes
     // by user_id and cascades via FK; callers that need the reshaped list
     // re-fetch via getMessages.
-    const client = await getPrestClient();
-    await client.delete('lobehub', 'public', 'messages', { id });
+    const db = await getLobehubQueryClient();
+    await db.delete('messages', { id });
     return { success: true };
   };
 
@@ -414,17 +385,17 @@ export class MessageService {
     ctx?: MessageQueryContext,
   ): Promise<UpdateMessageResult> => {
     if (ids.length === 0) return { success: true };
-    const client = await getPrestClient();
-    await client.delete('lobehub', 'public', 'messages', { id: { in: ids } });
+    const db = await getLobehubQueryClient();
+    await db.delete('messages', { id: { in: ids } });
     return { success: true };
   };
 
   removeMessagesByAssistant = async (sessionId: string, topicId?: string) => {
-    const client = await getPrestClient();
+    const db = await getLobehubQueryClient();
     if (topicId) {
-      await client.delete('lobehub', 'public', 'messages', { topic_id: topicId });
+      await db.delete('messages', { topic_id: topicId });
     } else {
-      await client.delete('lobehub', 'public', 'messages', { session_id: sessionId });
+      await db.delete('messages', { session_id: sessionId });
     }
   };
 
@@ -434,11 +405,11 @@ export class MessageService {
   };
 
   removeAllMessages = async () => {
-    const client = await getPrestClient();
+    const db = await getLobehubQueryClient();
 
     // No where clause — pREST's [[auth.user_id_filters]] still scopes the
     // DELETE to the current user.
-    await client.delete('lobehub', 'public', 'messages', {});
+    await db.delete('messages', {});
     return { success: true };
   };
 
@@ -451,10 +422,8 @@ export class MessageService {
     fileIds: string[],
     ctx?: MessageQueryContext,
   ): Promise<UpdateMessageResult> => {
-    const client = await getPrestClient();
-    await client.insertBatch(
-      'lobehub',
-      'public',
+    const db = await getLobehubQueryClient();
+    await db.insertBatch(
       'messages_files',
       fileIds.map((fileId) => ({ message_id: id, file_id: fileId })),
     );

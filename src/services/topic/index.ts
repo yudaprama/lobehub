@@ -2,7 +2,7 @@ import type { Filter } from 'prest-js-sdk';
 
 import { INBOX_SESSION_ID } from '@/const/session';
 import { idGenerator } from '@/libs/idGenerator';
-import { getPrestClient, getWorkspaceParams } from '@/libs/prest/client';
+import { getLobehubQueryClient, getWorkspaceParams } from '@/libs/prest/client';
 import { lambdaClient } from '@/libs/trpc/client';
 import { type BatchTaskResult } from '@/types/service';
 import {
@@ -47,23 +47,23 @@ interface TopicRow {
 
 export class TopicService {
   createTopic = async (params: CreateTopicParams): Promise<string> => {
-    const client = await getPrestClient();
+    const db = await getLobehubQueryClient();
     const id = idGenerator('topics');
-    await client.insert('lobehub', 'public', 'topics', {
+    await db.insert('topics', {
       id,
       title: params.title ?? null,
       favorite: params.favorite ?? false,
       session_id: this.toDbSessionId(params.sessionId),
       trigger: params.trigger ?? null,
-    } as any);
+    });
     return id;
   };
 
   batchCreateTopics = async (importTopics: ChatTopic[]): Promise<BatchTaskResult> => {
-    const client = await getPrestClient();
+    const db = await getLobehubQueryClient();
     const results = await Promise.allSettled(
       importTopics.map((topic) =>
-        client.insert('lobehub', 'public', 'topics', {
+        db.insert('topics', {
           id: topic.id || idGenerator('topics'),
           title: topic.title ?? null,
           favorite: topic.favorite ?? false,
@@ -93,11 +93,9 @@ export class TopicService {
   };
 
   batchMoveTopics = async (topicIds: string[], targetAgentId: string) => {
-    const client = await getPrestClient();
+    const db = await getLobehubQueryClient();
     await Promise.all(
-      topicIds.map((id) =>
-        client.update('lobehub', 'public', 'topics', { id }, { agent_id: targetAgentId }),
-      ),
+      topicIds.map((id) => db.update('topics', { id }, { agent_id: targetAgentId })),
     );
   };
 
@@ -129,12 +127,12 @@ export class TopicService {
     pageSize?: number;
     statuses?: string[];
   }): Promise<ChatTopic[]> => {
-    const client = await getPrestClient();
+    const db = await getLobehubQueryClient();
 
     // Tier 1 read: `topics` is auto-scoped by pREST's [[auth.user_id_filters]].
     // The original lambdaClient path applies server-side status filtering; we
     // emulate it with `where: { status: { in: statuses } }` when provided.
-    const rows = await client.select<TopicRow>('lobehub', 'public', 'topics', {
+    const rows = await db.select('topics', {
       camelCase: true,
       order: ['updated_at:desc'],
       size: params?.pageSize ?? 20,
@@ -150,7 +148,7 @@ export class TopicService {
     range?: [string, string];
     startDate?: string;
   }): Promise<number> => {
-    const client = await getPrestClient();
+    const db = await getLobehubQueryClient();
 
     const where: Filter = {};
     if (params?.agentId) where.agent_id = params.agentId;
@@ -158,11 +156,13 @@ export class TopicService {
     if (params?.startDate) where.created_at = { gte: params.startDate };
     if (params?.endDate) where.updated_at = { lte: params.endDate };
 
-    const rows = await client.select<{ count: number }>('lobehub', 'public', 'topics', {
+    const rows = await db.select('topics', {
       count: true,
       ...(Object.keys(where).length ? { where } : {}),
     });
-    const row = Array.isArray(rows) ? rows[0] : undefined;
+    const row = Array.isArray(rows)
+      ? (rows[0] as unknown as { count: number } | undefined)
+      : undefined;
     return row?.count ?? 0;
   };
 
@@ -185,7 +185,7 @@ export class TopicService {
     }
 
     return (async () => {
-      const client = await getPrestClient();
+      const db = await getLobehubQueryClient();
 
       // Tier 2 stored SQL template wraps ts_rank(topics_tsv) — replaces the
       // legacy ParadeDB BM25 path. The `groupId` filter is not in the template
@@ -200,7 +200,7 @@ export class TopicService {
         }) as any;
       }
 
-      const rows = await client.query<TopicRow & { rank: number }>(
+      const rows = await db.query<TopicRow & { rank: number }>(
         'lobehub',
         'topicsSearchFts',
         {
@@ -215,7 +215,7 @@ export class TopicService {
   };
 
   updateTopic = async (id: string, data: Partial<ChatTopic>) => {
-    const client = await getPrestClient();
+    const db = await getLobehubQueryClient();
 
     const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
     if (data.title !== undefined) patch.title = data.title;
@@ -226,7 +226,7 @@ export class TopicService {
     if (data.trigger !== undefined) patch.trigger = data.trigger;
     if (data.metadata !== undefined) patch.metadata = data.metadata;
 
-    await client.update('lobehub', 'public', 'topics', { id }, patch);
+    await db.update('topics', { id }, patch);
   };
 
   /**
@@ -238,8 +238,8 @@ export class TopicService {
   };
 
   updateTopicMetadata = async (id: string, metadata: UpdateTopicMetadataInput) => {
-    const client = await getPrestClient();
-    await client.update('lobehub', 'public', 'topics', { id }, { metadata });
+    const db = await getLobehubQueryClient();
+    await db.update('topics', { id }, { metadata });
   };
 
   getShareInfo = (topicId: string) => {
@@ -259,38 +259,38 @@ export class TopicService {
   };
 
   removeTopic = async (id: string) => {
-    const client = await getPrestClient();
-    await client.delete('lobehub', 'public', 'topics', { id });
+    const db = await getLobehubQueryClient();
+    await db.delete('topics', { id });
   };
 
   removeTopics = async (sessionId: string) => {
-    const client = await getPrestClient();
+    const db = await getLobehubQueryClient();
 
     const dbSessionId = this.toDbSessionId(sessionId);
     if (dbSessionId === null) {
       // INBOX: no session_id match — skip (BFF treats as no-op)
       return;
     }
-    await client.delete('lobehub', 'public', 'topics', { session_id: dbSessionId });
+    await db.delete('topics', { session_id: dbSessionId });
   };
 
   removeTopicsByAgentId = async (agentId: string) => {
-    const client = await getPrestClient();
-    await client.delete('lobehub', 'public', 'topics', { agent_id: agentId });
+    const db = await getLobehubQueryClient();
+    await db.delete('topics', { agent_id: agentId });
   };
 
   batchRemoveTopics = async (topics: string[]) => {
     if (topics.length === 0) return;
-    const client = await getPrestClient();
-    await client.delete('lobehub', 'public', 'topics', { id: { in: topics } });
+    const db = await getLobehubQueryClient();
+    await db.delete('topics', { id: { in: topics } });
   };
 
   removeAllTopic = async () => {
-    const client = await getPrestClient();
+    const db = await getLobehubQueryClient();
 
     // No where clause — pREST's [[auth.user_id_filters]] still scopes the
     // DELETE to the current user.
-    await client.delete('lobehub', 'public', 'topics', {});
+    await db.delete('topics', {});
   };
 
   private toDbSessionId = (sessionId?: string | null) =>

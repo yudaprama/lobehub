@@ -367,14 +367,11 @@ export class FileService {
   };
 
   /**
-   * Folder breadcrumb lookup.
-   *
-   * Stays on raw PrestClient — the template returns `{ breadcrumb: any[] }`
-   * whose nested shape we don't want the SDK to transform.
+   * Folder breadcrumb lookup via Tier 2 stored SQL template.
    */
   getFolderBreadcrumb = async (slug: string) => {
-    const client = await getPrestClient();
-    const rows = await client.query<{ breadcrumb: any[] }>('lobehub', 'documentFolderBreadcrumb', {
+    const db = await getLobehubQueryClient();
+    const rows = await db.query<{ breadcrumb: any[] }>('lobehub', 'documentFolderBreadcrumb', {
       slug,
     });
     return rows[0]?.breadcrumb ?? [];
