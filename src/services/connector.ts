@@ -37,19 +37,21 @@ class ConnectorService {
     await db.delete('user_connectors', { id });
   };
 
-  update = (
+  update = async (
     id: string,
     patch: Parameters<typeof lambdaClient.connector.update.mutate>[0]['patch'],
   ): Promise<void> => {
-    return lambdaClient.connector.update.mutate({ id, patch: patch as any });
+    const db = await getLobehubQueryClient();
+    await db.update('user_connectors', { id }, patch as any);
   };
 
   syncTools = (id: string) => {
     return lambdaClient.connector.syncTools.mutate({ id });
   };
 
-  resetPermissions = (id: string) => {
-    return lambdaClient.connector.resetPermissions.mutate({ id });
+  resetPermissions = async (id: string) => {
+    const db = await getLobehubQueryClient();
+    await db.delete('user_connector_tools', { connector_id: id });
   };
 
   /**
@@ -72,8 +74,12 @@ class ConnectorService {
     return lambdaClient.connector.syncPluginTools.mutate({ identifier });
   };
 
-  updateToolPermission = (toolId: string, permission: ConnectorToolPermission): Promise<void> => {
-    return lambdaClient.connector.updateToolPermission.mutate({ permission, toolId });
+  updateToolPermission = async (
+    toolId: string,
+    permission: ConnectorToolPermission,
+  ): Promise<void> => {
+    const db = await getLobehubQueryClient();
+    await db.update('user_connector_tools', { id: toolId }, { permission } as any);
   };
 }
 

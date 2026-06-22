@@ -242,20 +242,34 @@ export class TopicService {
     await db.update('topics', { id }, { metadata });
   };
 
-  getShareInfo = (topicId: string) => {
-    return lambdaClient.topic.getShareInfo.query({ topicId });
+  getShareInfo = async (topicId: string) => {
+    const db = await getLobehubQueryClient();
+    const rows = await db.select('topic_shares', {
+      camelCase: true,
+      where: { topic_id: topicId },
+    });
+    return rows?.[0] ?? null;
   };
 
-  enableSharing = (topicId: string, visibility?: 'private' | 'link') => {
-    return lambdaClient.topic.enableSharing.mutate({ topicId, visibility });
+  enableSharing = async (topicId: string, visibility: 'private' | 'link' = 'link') => {
+    const db = await getLobehubQueryClient();
+    const id = idGenerator('topicShares');
+    await db.insert('topic_shares', {
+      id,
+      topic_id: topicId,
+      visibility,
+    } as any);
+    return { id };
   };
 
-  updateShareVisibility = (topicId: string, visibility: 'private' | 'link') => {
-    return lambdaClient.topic.updateShareVisibility.mutate({ topicId, visibility });
+  updateShareVisibility = async (topicId: string, visibility: 'private' | 'link') => {
+    const db = await getLobehubQueryClient();
+    await db.update('topic_shares', { topic_id: topicId }, { visibility } as any);
   };
 
-  disableSharing = (topicId: string) => {
-    return lambdaClient.topic.disableSharing.mutate({ topicId });
+  disableSharing = async (topicId: string) => {
+    const db = await getLobehubQueryClient();
+    await db.delete('topic_shares', { topic_id: topicId });
   };
 
   removeTopic = async (id: string) => {

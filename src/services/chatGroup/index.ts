@@ -6,6 +6,7 @@ import {
   type NewChatGroup,
   type NewChatGroupAgent,
 } from '@/database/schemas';
+import { getLobehubQueryClient } from '@/libs/prest/client';
 import { lambdaClient } from '@/libs/trpc/client';
 
 export interface GroupMemberConfig {
@@ -74,30 +75,43 @@ class ChatGroupService {
     });
   };
 
-  updateGroup = (id: string, value: Partial<ChatGroupItem>): Promise<ChatGroupItem> => {
-    return lambdaClient.group.updateGroup.mutate({
-      id,
-      value: {
-        ...value,
-        config: value.config as any,
-      },
+  updateGroup = async (id: string, value: Partial<ChatGroupItem>): Promise<ChatGroupItem> => {
+    const db = await getLobehubQueryClient();
+    const patch: Record<string, unknown> = {};
+    if (value.title !== undefined) patch.title = value.title;
+    if (value.description !== undefined) patch.description = value.description;
+    if (value.config !== undefined) patch.config = value.config as any;
+    if (value.avatar !== undefined) patch.avatar = value.avatar;
+    if (value.backgroundColor !== undefined) patch.background_color = value.backgroundColor;
+    await db.update('chat_groups', { id }, patch as any);
+    return { id, ...value } as ChatGroupItem;
+  };
+
+  deleteGroup = async (id: string) => {
+    const db = await getLobehubQueryClient();
+    await db.delete('chat_groups', { id });
+  };
+
+  getGroup = async (id: string): Promise<ChatGroupItem | undefined> => {
+    const db = await getLobehubQueryClient();
+    const rows = await db.select('chat_groups', {
+      camelCase: true,
+      where: { id },
     });
+    return rows?.[0] as ChatGroupItem | undefined;
   };
 
-  deleteGroup = (id: string) => {
-    return lambdaClient.group.deleteGroup.mutate({ id });
-  };
-
-  getGroup = (id: string): Promise<ChatGroupItem | undefined> => {
-    return lambdaClient.group.getGroup.query({ id });
+  getGroups = async (): Promise<ChatGroupItem[]> => {
+    const db = await getLobehubQueryClient();
+    const rows = await db.select('chat_groups', {
+      camelCase: true,
+      order: ['updated_at:desc'],
+    });
+    return (rows ?? []) as ChatGroupItem[];
   };
 
   getGroupDetail = (id: string): Promise<AgentGroupDetail | null> => {
     return lambdaClient.group.getGroupDetail.query({ id });
-  };
-
-  getGroups = (): Promise<ChatGroupItem[]> => {
-    return lambdaClient.group.getGroups.query();
   };
 
   addAgentsToGroup = (
@@ -118,8 +132,9 @@ class ChatGroupService {
     });
   };
 
-  removeAgentsFromGroup = (groupId: string, agentIds: string[]) => {
-    return lambdaClient.group.removeAgentsFromGroup.mutate({ agentIds, groupId });
+  removeAgentsFromGroup = async (groupId: string, agentIds: string[]) => {
+    const db = await getLobehubQueryClient();
+    await db.delete('chat_groups_agents', { chat_group_id: groupId, agent_id: { in: agentIds } });
   };
 
   updateAgentInGroup = (
@@ -137,8 +152,14 @@ class ChatGroupService {
     });
   };
 
-  getGroupAgents = (groupId: string): Promise<ChatGroupAgentItem[]> => {
-    return lambdaClient.group.getGroupAgents.query({ groupId });
+  getGroupAgents = async (groupId: string): Promise<ChatGroupAgentItem[]> => {
+    const db = await getLobehubQueryClient();
+    const rows = await db.select('chat_groups_agents', {
+      camelCase: true,
+      where: { chat_group_id: groupId },
+      order: ['order:asc'],
+    });
+    return (rows ?? []) as ChatGroupAgentItem[];
   };
 
   /**
