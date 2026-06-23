@@ -1,13 +1,16 @@
 import { getActiveWorkspaceId } from '@/business/client/hooks/useActiveWorkspaceId';
 
-const DEFAULT_EGENT_URL = 'http://localhost:10531';
+// Default is the Ory Oathkeeper edge (:4455), which validates the Kratos
+// session and injects X-User-Id before path-routing /v1/* to egent-lobehub
+// (:10531, localhost-only). Do NOT bypass Oathkeeper by pointing this at
+// :10531 directly — that skips authentication. Override via NEXT_PUBLIC_EGENT_URL.
+const DEFAULT_EGENT_URL = 'http://localhost:4455';
 
 let cachedUrl: string | null = null;
 
 /**
- * Returns the egent-lobehub base URL.
+ * Returns the egent-lobehub base URL (the Oathkeeper auth edge).
  * Reads NEXT_PUBLIC_EGENT_URL at runtime (browser-safe via window global).
- * Falls back to localhost for local development.
  */
 export function getEgentUrl(): string {
   if (cachedUrl !== null) return cachedUrl;

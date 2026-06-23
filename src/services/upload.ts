@@ -45,22 +45,13 @@ interface UploadFileToS3Options {
   skipCheckFileType?: boolean;
 }
 
-function getKratosSessionToken(): string {
-  const match = document.cookie.match(/(?:^|; )ory_kratos_session=([^;]*)/);
-  if (!match?.[1]) throw new Error('No Kratos session cookie found');
-  return decodeURIComponent(match[1]);
-}
-
 class UploadService {
   /**
    * @deprecated Use `uploadFileToS3` — kept as a shim for callers (e.g.
    * `ragEval.ts`, `eval/DatasetImportModal`) that still reference the
    * old S3-server pre-sign flow. Internally just calls uploadFileToS3.
    */
-  uploadToServerS3 = async (
-    file: File,
-    options: UploadFileToS3Options,
-  ): Promise<FileMetadata> => {
+  uploadToServerS3 = async (file: File, options: UploadFileToS3Options): Promise<FileMetadata> => {
     const { data } = await this.uploadFileToS3(file, options);
     return data;
   };
@@ -154,7 +145,6 @@ class UploadService {
       pathname,
     });
 
-    const token = getKratosSessionToken();
     const baseUrl = alistUrl.replace(/\/+$/, '');
 
     const xhr = new XMLHttpRequest();
@@ -205,7 +195,7 @@ class UploadService {
       form.append('file', file);
 
       xhr.open('PUT', `${baseUrl}/api/fs/form`);
-      xhr.setRequestHeader('Authorization', `kratos:${token}`);
+      xhr.withCredentials = true;
       xhr.setRequestHeader('File-Path', encodeURIComponent(destPath));
 
       xhr.send(form);

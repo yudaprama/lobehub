@@ -134,6 +134,17 @@ new issue opens if they reappear.
   `egentFetch` / `lambdaClient`. This is the _only_ tier that
   justifies new Go handlers.
 
+> **Don't confuse the two clients.** `prest-js-sdk` (Tier 1/2) is a typed
+> client for pREST's REST API (`/{db}/{schema}/{table}` CRUD + `/_QUERIES`
+> templates, JSON). `egentFetch` (Tier 3) is a raw `fetch` for egent-lobehub's
+> custom `/v1/*` API. **Do NOT use `prest-js-sdk` for egent** — even though
+> both are now behind the shared Ory Oathkeeper edge (`:4455`, same host).
+> Sharing the host only unifies transport/auth (CORS, cookie), not the API
+> contract: egent's `/v1/chat/completions` and `/v1/agent/exec` (`stream=true`)
+> return `text/event-stream` consumed via `res.body.getReader()`, which the
+> JSON-oriented SDK cannot handle. The SDK's generic `request<T>()` escape
+> hatch gains nothing over `egentFetch` and breaks on SSE. Keep two clients.
+
 ---
 
 ### 6. Uniform `as any` policy on insert/update payloads
