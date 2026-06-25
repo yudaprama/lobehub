@@ -21,7 +21,9 @@ export const getFileConfig = () => {
       NEXT_PUBLIC_S3_DOMAIN: z.string().optional(),
       NEXT_PUBLIC_S3_FILE_PATH: z.string().optional(),
 
-      // AList file storage (fork)
+      // AList file storage (fork). Edge origin WITH the /.assets/alist mount
+      // prefix (e.g. http://localhost:4455/.assets/alist); the SDK appends
+      // /api/* to it, so the prefix is required or edge routing 404s.
       NEXT_PUBLIC_ALIST_URL: z.string().optional(),
       NEXT_PUBLIC_KRATOS_PUBLIC_URL: z.string().optional(),
 
