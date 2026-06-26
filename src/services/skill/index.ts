@@ -21,17 +21,17 @@ class AgentSkillService {
 
   async createSkill(params: CreateSkillInput): Promise<SkillItem | undefined> {
     const db = await getLobehubQueryClient();
-    const id = params.id || idGenerator('agentSkills');
+    const id = idGenerator('agentSkills');
     await db.insert('agent_skills', {
       id,
       name: params.name,
       description: params.description ?? '',
-      identifier: params.identifier,
-      source: params.source ?? 'custom',
-      manifest: params.manifest ?? null,
+      identifier: params.identifier ?? params.name,
+      source: 'user',
+      manifest: null,
       content: params.content ?? null,
     } as any);
-    return { id } as any;
+    return { id } as unknown as SkillItem;
   }
 
   // ===== Import (Tier 3 — server-side logic) =====
@@ -60,7 +60,7 @@ class AgentSkillService {
       camelCase: true,
       where: { id },
     });
-    return rows?.[0] as SkillItem | undefined;
+    return rows?.[0] as unknown as SkillItem | undefined;
   }
 
   async getZipUrl(id: string): Promise<{ name: string; url: string | null }> {
@@ -73,7 +73,7 @@ class AgentSkillService {
       camelCase: true,
       where: { identifier },
     });
-    return rows?.[0] as SkillItem | undefined;
+    return rows?.[0] as unknown as SkillItem | undefined;
   }
 
   async getByName(name: string): Promise<SkillItem | undefined> {
@@ -82,18 +82,20 @@ class AgentSkillService {
       camelCase: true,
       where: { name },
     });
-    return rows?.[0] as SkillItem | undefined;
+    return rows?.[0] as unknown as SkillItem | undefined;
   }
 
   async list(source?: SkillSource): Promise<{ data: SkillListItem[]; total: number }> {
     const db = await getLobehubQueryClient();
-    const where = source ? { source } : {};
-    const rows = await db.select('agent_skills', {
+    const opts: { camelCase: true; order: string[]; where?: { source: string } } = {
       camelCase: true,
       order: ['updated_at:desc'],
-      ...(Object.keys(where).length ? { where } : {}),
-    });
-    return { data: (rows ?? []) as SkillListItem[], total: rows?.length ?? 0 };
+    };
+    if (source) {
+      opts.where = { source };
+    }
+    const rows = await db.select('agent_skills', opts);
+    return { data: (rows ?? []) as unknown as SkillListItem[], total: rows?.length ?? 0 };
   }
 
   async search(query: string): Promise<{ data: SkillListItem[]; total: number }> {
@@ -102,7 +104,7 @@ class AgentSkillService {
       camelCase: true,
       where: { name: { ilike: `%${query}%` } },
     });
-    return { data: (rows ?? []) as SkillListItem[], total: rows?.length ?? 0 };
+    return { data: (rows ?? []) as unknown as SkillListItem[], total: rows?.length ?? 0 };
   }
 
   // ===== Resources (Tier 3 — server-side file reading from ZIP) =====
@@ -123,7 +125,7 @@ class AgentSkillService {
     if (params.content !== undefined) patch.content = params.content;
     if (params.manifest !== undefined) patch.manifest = params.manifest;
     await db.update('agent_skills', { id: params.id }, patch as any);
-    return { id: params.id } as any;
+    return { id: params.id } as unknown as SkillItem;
   }
 
   // ===== Delete =====

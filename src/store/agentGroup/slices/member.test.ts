@@ -69,10 +69,7 @@ describe('ChatGroupMemberSlice', () => {
 
   describe('removeAgentFromGroup', () => {
     it('should remove an agent from a group', async () => {
-      vi.mocked(chatGroupService.removeAgentsFromGroup).mockResolvedValue({
-        deletedVirtualAgentIds: [],
-        removedFromGroup: 1,
-      });
+      vi.mocked(chatGroupService.removeAgentsFromGroup).mockResolvedValue(undefined);
 
       const { result } = renderHook(() => useAgentGroupStore());
 
@@ -84,10 +81,7 @@ describe('ChatGroupMemberSlice', () => {
     });
 
     it('should refresh group detail after removing agent', async () => {
-      vi.mocked(chatGroupService.removeAgentsFromGroup).mockResolvedValue({
-        deletedVirtualAgentIds: [],
-        removedFromGroup: 1,
-      });
+      vi.mocked(chatGroupService.removeAgentsFromGroup).mockResolvedValue(undefined);
 
       const { result } = renderHook(() => useAgentGroupStore());
 

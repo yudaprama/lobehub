@@ -1,3 +1,4 @@
+import { createNanoId } from '@lobechat/utils';
 import type { Filter } from 'prest-js-sdk';
 
 import { INBOX_SESSION_ID } from '@/const/session';
@@ -253,7 +254,7 @@ export class TopicService {
 
   enableSharing = async (topicId: string, visibility: 'private' | 'link' = 'link') => {
     const db = await getLobehubQueryClient();
-    const id = idGenerator('topicShares');
+    const id = `tsh_${createNanoId(8)()}`;
     await db.insert('topic_shares', {
       id,
       topic_id: topicId,

@@ -42,7 +42,7 @@ export class IdentityActionImpl {
   }
 
   createIdentity = async (data: NewUserMemoryIdentity): Promise<AddIdentityEntryResult> => {
-    const result = await memoryCRUDService.createIdentity(data);
+    const identityId = await memoryCRUDService.createIdentity(data);
     // Reset list to refresh
     this.#get().resetIdentitiesList({
       q: this.#get().identitiesQuery,
@@ -50,7 +50,7 @@ export class IdentityActionImpl {
       sort: this.#get().identitiesSort,
       types: this.#get().identitiesTypes,
     });
-    return result;
+    return { identityId, userMemoryId: data.userMemoryId ?? '' };
   };
 
   deleteIdentity = async (id: string): Promise<void> => {
@@ -94,7 +94,7 @@ export class IdentityActionImpl {
   };
 
   updateIdentity = async (id: string, data: UpdateUserMemoryIdentity): Promise<boolean> => {
-    const result = await memoryCRUDService.updateIdentity(id, data);
+    await memoryCRUDService.updateIdentity(id, data);
     // Reset list to refresh
     this.#get().resetIdentitiesList({
       q: this.#get().identitiesQuery,
@@ -102,7 +102,7 @@ export class IdentityActionImpl {
       sort: this.#get().identitiesSort,
       types: this.#get().identitiesTypes,
     });
-    return result;
+    return true;
   };
 
   useFetchIdentities = (params: IdentityQueryParams): SWRResponse<IdentityListResult> => {

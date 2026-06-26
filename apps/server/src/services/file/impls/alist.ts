@@ -10,6 +10,68 @@ import type { FileServiceImpl, PreSignedUpload } from './type';
 const log = debug('lobe-file:alist');
 
 /**
+ * Server-side AlistClient that injects Kratos session token via headers.
+ * The v2.0.0 SDK uses browser cookies (credentials: "include"), which
+ * doesn't work for server-to-server calls. This subclass adds the
+ * Authorization header with the Kratos session token.
+ */
+class ServerAlistClient extends AlistClient {
+  private readonly authHeader: string;
+
+  constructor(alistUrl: string, kratosSessionToken: string) {
+    super({ alistUrl });
+    this.authHeader = `kratos:${kratosSessionToken}`;
+  }
+
+  protected override async request<T = unknown>(
+    method: string,
+    path: string,
+    init?: { body?: BodyInit | null; headers?: Record<string, string> },
+  ): Promise<T> {
+    const url = `${this['alistUrl']}${path.startsWith('/') ? path : '/' + path}`;
+    const res = await fetch(url, {
+      method,
+      headers: {
+        Authorization: this.authHeader,
+        ...(init?.body && !(init.body instanceof FormData)
+          ? { 'Content-Type': 'application/json' }
+          : {}),
+        ...init?.headers,
+      },
+      body: init?.body ?? null,
+      redirect: 'manual',
+    });
+
+    if (res.status === 302) {
+      const location = res.headers.get('Location');
+      if (!location) throw new Error('redirect with no Location');
+      const followed = await fetch(location, { redirect: 'follow' });
+      if (!followed.ok) {
+        throw new Error('redirect target failed');
+      }
+      return (await followed.blob()) as unknown as T;
+    }
+
+    const text = await res.text();
+    let body: any = null;
+    if (text) {
+      try {
+        body = JSON.parse(text);
+      } catch {
+        body = text;
+      }
+    }
+
+    if (!res.ok) {
+      const code = body?.code ?? res.status;
+      const message = body?.message ?? res.statusText;
+      throw new Error(`[${res.status}] ${code}: ${message}`);
+    }
+    return body as T;
+  }
+}
+
+/**
  * AList-backed file service implementation.
  *
  * Paths stored in DB are relative to the user's AList BasePath,
@@ -17,7 +79,7 @@ const log = debug('lobe-file:alist');
  * /<kratos_identity_id> so the SDK handles the full path.
  */
 export class AlistStaticFileImpl implements FileServiceImpl {
-  private readonly alist: AlistClient;
+  private readonly alist: ServerAlistClient;
   private readonly db: LobeChatDatabase;
 
   constructor(db: LobeChatDatabase, kratosSessionToken: string) {
@@ -28,10 +90,7 @@ export class AlistStaticFileImpl implements FileServiceImpl {
       throw new Error('ALIST_URL is not configured — set it in the server environment');
     }
 
-    this.alist = new AlistClient({
-      alistUrl,
-      kratosSessionToken,
-    });
+    this.alist = new ServerAlistClient(alistUrl, kratosSessionToken);
   }
 
   async deleteFile(key: string) {
