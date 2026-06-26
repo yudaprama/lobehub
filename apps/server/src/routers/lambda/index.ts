@@ -2,7 +2,6 @@
  * This file contains the root router of Lobe Chat tRPC-backend
  */
 import { pageShareRouter } from '@/business/server/lambda-routers/pageShare';
-import { taskTemplateRouter } from '@/business/server/lambda-routers/taskTemplate';
 import { workspaceRouter } from '@/business/server/lambda-routers/workspace';
 import { workspaceCredsRouter } from '@/business/server/lambda-routers/workspaceCreds';
 import { publicProcedure, router } from '@/libs/trpc/lambda';
@@ -93,7 +92,6 @@ export const lambdaRouter = router({
   workspace: workspaceRouter,
   workspaceCreds: workspaceCredsRouter,
   pageShare: pageShareRouter,
-  taskTemplate: taskTemplateRouter,
 });
 
 export type LambdaRouter = typeof lambdaRouter;
