@@ -1,6 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { mockPrestDb } = vi.hoisted(() => ({
+import { lambdaClient } from '@/libs/trpc/client';
+import { briefService } from '@/services/brief';
+import { taskService } from '@/services/task';
+
+const { mockPrestDb, mockEgentFetch } = vi.hoisted(() => ({
+  mockEgentFetch: vi.fn(),
   mockPrestDb: {
     delete: vi.fn().mockResolvedValue([]),
     update: vi.fn().mockResolvedValue([{ id: 'brief_1' }]),
@@ -12,9 +17,10 @@ vi.mock('@/libs/prest/client', () => ({
   getLobehubClient: vi.fn().mockResolvedValue(mockPrestDb),
 }));
 
-import { lambdaClient } from '@/libs/trpc/client';
-import { briefService } from '@/services/brief';
-import { taskService } from '@/services/task';
+// Mock egent client (used by taskService.run → /v1/tasks/run)
+vi.mock('@/libs/egent/client', () => ({
+  egentFetch: mockEgentFetch,
+}));
 
 // Mock lambdaClient
 vi.mock('@/libs/trpc/client', () => ({
@@ -123,12 +129,21 @@ describe('TaskService', () => {
       });
     });
 
-    it('run should merge id with params', async () => {
-      await taskService.run('T-1', { prompt: 'Focus on tests' });
-      expect(lambdaClient.task.run.mutate).toHaveBeenCalledWith({
-        id: 'T-1',
-        prompt: 'Focus on tests',
+    it('run should POST to /v1/tasks/run with mapped params', async () => {
+      mockEgentFetch.mockResolvedValue({
+        json: () => Promise.resolve({ operationId: 'op_1', taskId: 'T-1', topicId: 'tpc_1' }),
+        ok: true,
+        status: 200,
       });
+
+      await taskService.run('T-1', { prompt: 'Focus on tests' });
+
+      expect(mockEgentFetch).toHaveBeenCalledWith(
+        '/v1/tasks/run',
+        expect.objectContaining({ method: 'POST' }),
+      );
+      const [, init] = mockEgentFetch.mock.calls[0];
+      expect(JSON.parse(init.body)).toEqual({ extraPrompt: 'Focus on tests', taskId: 'T-1' });
     });
 
     it('addComment should pass all params', async () => {

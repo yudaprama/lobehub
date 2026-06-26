@@ -1,5 +1,6 @@
 import type { CheckpointConfig, TaskAutomationMode, TaskStatus } from '@lobechat/types';
 
+import { egentFetch } from '@/libs/egent/client';
 import { getLobehubQueryClient, getWorkspaceParams } from '@/libs/prest/client';
 import { lambdaClient } from '@/libs/trpc/client';
 
@@ -229,12 +230,29 @@ class TaskService {
     await db.update('tasks', { id }, data);
   };
 
-  // Stays on tRPC — starts Temporal workflow
-  run = async (id: string, params?: { continueTopicId?: string; prompt?: string }) =>
-    lambdaClient.task.run.mutate({ id, ...params });
+  // Starts the durable Temporal workflow via egent-lobehub. The handler
+  // pre-assigns + returns { taskId, topicId, operationId, workflowId, runId,
+  // status }; callers ignore it (the task surface polls task detail, so the
+  // new topic appears on the next refresh once workflow Step 5b persists it).
+  run = async (id: string, params?: { continueTopicId?: string; prompt?: string }) => {
+    const res = await egentFetch('/v1/tasks/run', {
+      body: JSON.stringify({
+        taskId: id,
+        ...(params?.continueTopicId && { continueTopicId: params.continueTopicId }),
+        ...(params?.prompt && { extraPrompt: params.prompt }),
+      }),
+      headers: { 'Content-Type': 'application/json' },
+      method: 'POST',
+    });
+    if (!res.ok) throw new Error(`task run failed: ${res.status}`);
+    return res.json();
+  };
 
   previewSubtaskLayers = async (id: string) => lambdaClient.task.previewSubtaskLayers.query({ id });
 
+  // Stays on tRPC — batch subtask orchestration (find dependency-unlocked
+  // subtasks + kick off one workflow each, return { kickedOff, failed }).
+  // No Go endpoint yet; needs a /v1/tasks/run-ready batch handler.
   runReadySubtasks = async (id: string) => lambdaClient.task.runReadySubtasks.mutate({ id });
 
   addComment = async (
