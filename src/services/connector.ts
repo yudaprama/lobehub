@@ -1,13 +1,19 @@
 import { type ConnectorToolPermission } from '@/database/schemas';
+import { getActiveWorkspaceId } from '@/business/client/hooks/useActiveWorkspaceId';
 import { getLobehubQueryClient } from '@/libs/prest/client';
 import { lambdaClient } from '@/libs/trpc/client';
 
 class ConnectorService {
   /**
-   * List all connectors with their tools (credentials stripped server-side).
+   * List all connectors with their tools nested (secrets stripped server-side
+   * by the `connectorsListWithTools` Tier 2 template). Was lambdaClient.connector.list.
    */
-  list = (): Promise<any[]> => {
-    return lambdaClient.connector.list.query();
+  list = async (): Promise<any[]> => {
+    const db = await getLobehubQueryClient();
+    const params: Record<string, string> = {};
+    const workspaceId = getActiveWorkspaceId();
+    if (workspaceId) params.workspaceId = workspaceId;
+    return db.query('lobehub', 'connectorsListWithTools', params);
   };
 
   /**
@@ -42,16 +48,45 @@ class ConnectorService {
     patch: Parameters<typeof lambdaClient.connector.update.mutate>[0]['patch'],
   ): Promise<void> => {
     const db = await getLobehubQueryClient();
-    await db.update('user_connectors', { id }, patch as any);
+    // Map the FE camelCase patch to snake_case columns. `credentials` and
+    // `oidcConfig` are intentionally dropped here: credentials are AES-GCM
+    // encrypted at rest (needs the keyvault) and oidcConfig is machine-managed
+    // by the OAuth flow — both require egent /v1/connector/update (Phase 2).
+    // Dropping them guarantees no plaintext ever lands in the ciphertext column.
+    const {
+      credentials: _credentials,
+      oidcConfig: _oidcConfig,
+      mcpConnectionType,
+      mcpServerUrl,
+      mcpStdioConfig,
+      isEnabled,
+      ...rest
+    } = (patch ?? {}) as any;
+    const safePatch: Record<string, unknown> = { ...rest };
+    if (isEnabled !== undefined) safePatch.is_enabled = isEnabled;
+    if (mcpServerUrl !== undefined) safePatch.mcp_server_url = mcpServerUrl;
+    if (mcpConnectionType !== undefined) safePatch.mcp_connection_type = mcpConnectionType;
+    if (mcpStdioConfig !== undefined) safePatch.mcp_stdio_config = mcpStdioConfig;
+    await db.update('user_connectors', { id }, safePatch as any);
   };
 
   syncTools = (id: string) => {
     return lambdaClient.connector.syncTools.mutate({ id });
   };
 
-  resetPermissions = async (id: string) => {
+  /**
+   * Reset every tool's permission for a connector back to 'auto' (re-enable).
+   * Was a db.delete (wrong — deleted the tools) on the wrong column
+   * (`connector_id`); the real column is `user_connector_id`. Bulk PUT now
+   * mirrors ConnectorToolModel resetting each tool to 'auto'.
+   */
+  resetPermissions = async (id: string): Promise<void> => {
     const db = await getLobehubQueryClient();
-    await db.delete('user_connector_tools', { connector_id: id });
+    await db.update(
+      'user_connector_tools',
+      { user_connector_id: id },
+      { permission: 'auto' } as any,
+    );
   };
 
   /**

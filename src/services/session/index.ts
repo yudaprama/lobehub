@@ -12,6 +12,28 @@ import {
   type UpdateSessionParams,
 } from '@/types/session';
 
+/** Flat row returned by the `sessionsSearchByKeyword` Tier 2 template. */
+interface SessionSearchRow {
+  agentAvatar: string | null;
+  agentBackgroundColor: string | null;
+  agentDescription: string | null;
+  agentMarketIdentifier: string | null;
+  agentModel: string | null;
+  agentTags: string[] | null;
+  agentTitle: string | null;
+  agentVirtual: boolean | null;
+  avatar: string | null;
+  backgroundColor: string | null;
+  createdAt: string;
+  description: string | null;
+  groupId: string | null;
+  id: string;
+  pinned: boolean | null;
+  slug: string | null;
+  title: string | null;
+  updatedAt: string;
+}
+
 /**
  * @deprecated Session service is legacy. Use agentService for agent CRUD operations.
  * Mobile still uses this, but should migrate to agentService.
@@ -88,8 +110,44 @@ export class SessionService {
     await db.update('sessions', { id }, patch);
   };
 
-  searchSessions = (keywords: string): Promise<LobeSessions> => {
-    return lambdaClient.session.searchSessions.query({ keywords });
+  searchSessions = async (keywords: string): Promise<LobeSessions> => {
+    if (!keywords) return [];
+
+    // Tier 2 template: agent-type sessions whose linked agent's title or
+    // description matches the keyword (ILIKE — the fork-native replacement for
+    // the disabled ParadeDB `@@@` path). The adapter assembles the nested
+    // meta/config shape from the flat columns, mirroring the agent branch of
+    // SessionModel.mapSessionItem.
+    const db = await getLobehubQueryClient();
+    const rows = await db.query<SessionSearchRow>('lobehub', 'sessionsSearchByKeyword', {
+      keyword: keywords,
+      ...getWorkspaceParams(),
+    });
+
+    return rows.map(
+      (row) =>
+        ({
+          createdAt: row.createdAt,
+          // The full agent row is the config in the BFF; the search list only
+          // reads `config.virtual`, so a minimal config is sufficient here.
+          config: { model: row.agentModel || '', plugins: [], virtual: row.agentVirtual ?? false },
+          group: row.groupId ?? undefined,
+          id: row.id,
+          meta: {
+            avatar: row.agentAvatar ?? row.avatar ?? undefined,
+            backgroundColor: row.agentBackgroundColor ?? row.backgroundColor ?? undefined,
+            description: row.agentDescription ?? row.description ?? undefined,
+            marketIdentifier: row.agentMarketIdentifier ?? undefined,
+            tags: row.agentTags ?? undefined,
+            title: row.agentTitle ?? row.title ?? undefined,
+          },
+          model: row.agentModel || '',
+          pinned: row.pinned ?? false,
+          slug: row.slug,
+          type: 'agent',
+          updatedAt: row.updatedAt,
+        }) as unknown as LobeAgentSession,
+    );
   };
 
   removeSession = async (id: string) => {
