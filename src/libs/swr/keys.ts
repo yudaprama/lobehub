@@ -665,11 +665,6 @@ export const favoriteKeys = {
   ]),
 };
 
-// ---- changelog ----------------------------------------------------------
-export const changelogKeys = {
-  modalIndex: def('changelog:modalIndex', () => ['changelog:modalIndex']),
-  post: def('changelog:post', (id: string, locale: string) => ['changelog:post', id, locale]),
-};
 
 // ---- agent onboarding ---------------------------------------------------
 export const onboardingKeys = {
@@ -799,7 +794,6 @@ export const swrKeys = {
   auth: authKeys,
   brief: briefKeys,
   builtinAgent: builtinAgentKeys,
-  changelog: changelogKeys,
   chatTool: chatToolKeys,
   cron: cronKeys,
   device: deviceKeys,

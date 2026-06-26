@@ -10,7 +10,6 @@ import {
   Book,
   CircleHelp,
   Feather,
-  FileClockIcon,
   FlaskConical,
   MessageCircle,
   Rocket,
@@ -21,8 +20,6 @@ import type { ReactNode } from 'react';
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-
-import { openChangelogModal } from '@/components/ChangelogModal';
 import { openFeedbackModal } from '@/components/FeedbackModal';
 import HighlightNotification from '@/components/HighlightNotification';
 import { DOCUMENTS_REFER_URL, GITHUB } from '@/const/url';
@@ -168,10 +165,6 @@ const Footer = memo(() => {
     });
   }, [isWithinTimeWindow, shouldAutoShowProductHuntCard, trackPromotionEvent]);
 
-  const handleOpenChangelogModal = useCallback(() => {
-    openChangelogModal();
-  }, []);
-
   const handleOpenFeedbackModal = useCallback(() => {
     openFeedbackModal();
   }, []);
@@ -291,12 +284,6 @@ const Footer = memo(() => {
       {
         type: 'divider',
       },
-      {
-        icon: <Icon icon={FileClockIcon} />,
-        key: 'changelog',
-        label: t('changelog'),
-        onClick: handleOpenChangelogModal,
-      },
       ...(footer.layout === 'compact' && !footer.hideGitHub
         ? [
             {
@@ -338,7 +325,6 @@ const Footer = memo(() => {
       footer.layout,
       footer.hideGitHub,
       footer.showEvalEntry,
-      handleOpenChangelogModal,
       handleOpenFeedbackModal,
       handleOpenProductHuntCard,
       isDevMode,

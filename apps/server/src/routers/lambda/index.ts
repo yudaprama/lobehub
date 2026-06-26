@@ -19,7 +19,6 @@ import { aiProviderRouter } from './aiProvider';
 import { apiKeyRouter } from './apiKey';
 import { botMessageRouter } from './botMessage';
 import { briefRouter } from './brief';
-import { changelogRouter } from './changelog';
 import { chunkRouter } from './chunk';
 import { composioRouter } from './composio';
 import { configRouter } from './config';
@@ -61,7 +60,6 @@ export const lambdaRouter = router({
   agentSkills: agentSkillsRouter,
   agentSignal: agentSignalRouter,
   task: taskRouter,
-  changelog: changelogRouter,
   brief: briefRouter,
   aiAgent: aiAgentRouter,
   aiChat: aiChatRouter,

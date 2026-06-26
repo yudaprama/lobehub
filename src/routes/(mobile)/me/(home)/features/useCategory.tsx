@@ -6,7 +6,6 @@ import {
   Cloudy,
   Download,
   Feather,
-  FileClockIcon,
   Settings2,
 } from 'lucide-react';
 import { useMemo } from 'react';
@@ -15,7 +14,6 @@ import { useNavigate } from 'react-router-dom';
 
 import useBusinessMeCells from '@/business/client/features/User/useBusinessMeCells';
 import { type CellProps } from '@/components/Cell';
-import { openChangelogModal } from '@/components/ChangelogModal';
 import { DOCUMENTS, FEEDBACK } from '@/const/index';
 import { usePlatform } from '@/hooks/usePlatform';
 import { featureFlagsSelectors, useServerConfigStore } from '@/store/serverConfig';
@@ -87,12 +85,6 @@ export const useCategory = () => {
       key: 'feedback',
       label: t('feedback'),
       onClick: () => window.open(FEEDBACK, '__blank'),
-    },
-    {
-      icon: FileClockIcon,
-      key: 'changelog',
-      label: t('changelog'),
-      onClick: () => openChangelogModal(),
     },
   ].filter(Boolean) as CellProps[];
 

@@ -113,10 +113,6 @@ const renderFooter = async ({
   vi.doMock('@lobehub/analytics/react', () => ({
     useAnalytics: createAnalyticsApi,
   }));
-  vi.doMock('@/components/ChangelogModal', () => ({
-    default: vi.fn(),
-    openChangelogModal: vi.fn(),
-  }));
   vi.doMock('@/components/FeedbackModal', () => ({
     default: vi.fn(),
     openFeedbackModal: vi.fn(),
@@ -211,7 +207,6 @@ afterEach(() => {
   vi.unstubAllGlobals();
   vi.doUnmock('@lobechat/const');
   vi.doUnmock('@lobehub/analytics/react');
-  vi.doUnmock('@/components/ChangelogModal');
   vi.doUnmock('@/components/FeedbackModal');
   vi.doUnmock('@/components/HighlightNotification');
   vi.doUnmock('@/features/User/UserPanel/ThemeButton');
