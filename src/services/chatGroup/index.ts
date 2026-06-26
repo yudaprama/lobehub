@@ -137,19 +137,18 @@ class ChatGroupService {
     await db.delete('chat_groups_agents', { chat_group_id: groupId, agent_id: { in: agentIds } });
   };
 
-  updateAgentInGroup = (
+  updateAgentInGroup = async (
     groupId: string,
     agentId: string,
     updates: Partial<Pick<NewChatGroupAgent, 'order' | 'role'>>,
   ): Promise<NewChatGroupAgent> => {
-    return lambdaClient.group.updateAgentInGroup.mutate({
-      agentId,
-      groupId,
-      updates: {
-        order: updates.order === null ? undefined : updates.order,
-        role: updates.role === null ? undefined : updates.role,
-      },
-    });
+    // Tier 1: single-row update on chat_groups_agents (composite PK: chat_group_id + agent_id).
+    const db = await getLobehubQueryClient();
+    const patch: Record<string, unknown> = {};
+    if (updates.order !== undefined && updates.order !== null) patch.order = updates.order;
+    if (updates.role !== undefined && updates.role !== null) patch.role = updates.role;
+    const [row] = await db.update('chat_groups_agents', { chat_group_id: groupId, agent_id: agentId }, patch as any, { returning: ['*'] as any });
+    return row as unknown as NewChatGroupAgent;
   };
 
   getGroupAgents = async (groupId: string): Promise<ChatGroupAgentItem[]> => {
