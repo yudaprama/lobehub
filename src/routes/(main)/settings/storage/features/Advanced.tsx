@@ -2,18 +2,15 @@
 
 import { BRANDING_NAME } from '@lobechat/business-const';
 import { type FormGroupItemType } from '@lobehub/ui';
-import { Button, Form, Icon } from '@lobehub/ui';
+import { Button, Form } from '@lobehub/ui';
 import { confirmModal } from '@lobehub/ui/base-ui';
 import { App, Switch } from 'antd';
-import { HardDriveDownload, HardDriveUpload } from 'lucide-react';
 import { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import AccountDeletion from '@/business/client/features/AccountDeletion';
 import { useTransferAgentsFormItem } from '@/business/client/hooks/useTransferAgentsFormItem';
 import { FORM_STYLE } from '@/const/layoutTokens';
-import DataImporter from '@/features/DataImporter';
-import { configService } from '@/services/config';
 import { useChatStore } from '@/store/chat';
 import { useFileStore } from '@/store/file';
 import { useServerConfigStore } from '@/store/serverConfig';
@@ -88,39 +85,8 @@ const AdvancedActions = () => {
     });
   }, [message, resetSettings, t]);
 
-  const renderExportButtonFormItem = () => {
-    return {
-      children: (
-        <Button
-          icon={<Icon icon={HardDriveUpload} />}
-          onClick={() => {
-            configService.exportAll();
-          }}
-        >
-          {t('storage.actions.export.button')}
-        </Button>
-      ),
-      label: t('storage.actions.export.title'),
-      layout: 'horizontal',
-      minWidth: undefined,
-    } as const;
-  };
-
   const system: FormGroupItemType = {
     children: [
-      {
-        children: (
-          <DataImporter>
-            <Button icon={<Icon icon={HardDriveDownload} />}>
-              {t('storage.actions.import.button')}
-            </Button>
-          </DataImporter>
-        ),
-        label: t('storage.actions.import.title'),
-        layout: 'horizontal',
-        minWidth: undefined,
-      },
-      ...(enableBusinessFeatures ? [renderExportButtonFormItem()] : []),
       {
         children: (
           <Button danger type={'primary'} onClick={handleClear}>

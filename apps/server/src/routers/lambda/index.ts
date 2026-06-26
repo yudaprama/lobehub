@@ -25,12 +25,10 @@ import { configRouter } from './config';
 import { connectorRouter } from './connector';
 import { deviceRouter } from './device';
 import { documentRouter } from './document';
-import { exporterRouter } from './exporter';
 import { fileRouter } from './file';
 import { generationTopicRouter } from './generationTopic';
 import { homeRouter } from './home';
 import { imageRouter } from './image';
-import { importerRouter } from './importer';
 import { knowledgeBaseRouter } from './knowledgeBase';
 import { marketRouter } from './market';
 import { messageRouter } from './message';
@@ -68,14 +66,12 @@ export const lambdaRouter = router({
   connector: connectorRouter,
   device: deviceRouter,
   document: documentRouter,
-  exporter: exporterRouter,
   file: fileRouter,
   generationTopic: generationTopicRouter,
   group: agentGroupRouter,
   healthcheck: publicProcedure.query(() => "i'm live!"),
   home: homeRouter,
   image: imageRouter,
-  importer: importerRouter,
   composio: composioRouter,
   knowledgeBase: knowledgeBaseRouter,
   market: marketRouter,

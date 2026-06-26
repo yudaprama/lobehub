@@ -31,15 +31,6 @@ vi.mock('react-i18next', () => ({
   })),
 }));
 
-vi.mock('@/services/config', () => ({
-  configService: {
-    exportAgents: vi.fn(),
-    exportAll: vi.fn(),
-    exportSessions: vi.fn(),
-    exportSettings: vi.fn(),
-  },
-}));
-
 vi.mock('./useNewVersion', () => ({
   useNewVersion: vi.fn(() => false),
 }));
