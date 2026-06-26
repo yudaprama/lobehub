@@ -4,7 +4,6 @@ import { type SWRResponse } from 'swr';
 import useSWR from 'swr';
 
 import { toolKeys } from '@/libs/swr/keys';
-import { toolsClient } from '@/libs/trpc/client';
 import { composioService } from '@/services/composio';
 import { type StoreSetter } from '@/store/types';
 import { setNamespace } from '@/utils/storeDebug';
@@ -52,7 +51,7 @@ export class ComposioStoreActionImpl {
     );
 
     try {
-      const response = await toolsClient.composio.executeAction.mutate({
+      const response = await composioService.executeAction({
         identifier,
         toolArgs,
         toolSlug,
@@ -195,9 +194,7 @@ export class ComposioStoreActionImpl {
       }
 
       // ACTIVE — fetch tools
-      const toolsResponse = await toolsClient.composio.listActions.query({
-        appSlug: server.appSlug,
-      });
+      const toolsResponse = await composioService.getActions(server.appSlug);
 
       const tools = toolsResponse.tools as ComposioTool[];
 
@@ -303,7 +300,7 @@ export class ComposioStoreActionImpl {
     return useSWR<ComposioTool[]>(
       appSlug ? toolKeys.composioAppTools(appSlug) : null,
       async () => {
-        const response = await toolsClient.composio.getActions.query({ appSlug: appSlug! });
+        const response = await composioService.getActions(appSlug!);
         return (response.tools || []) as ComposioTool[];
       },
       { fallbackData: [], revalidateOnFocus: false },

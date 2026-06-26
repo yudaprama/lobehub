@@ -58,6 +58,26 @@ interface InstalledComposioPlugin {
   manifest?: { api?: { description?: string; name: string; parameters?: unknown }[] } | null;
 }
 
+interface ComposioAction {
+  description?: string;
+  inputSchema?: unknown;
+  name: string;
+}
+
+interface ExecuteActionParams {
+  identifier: string;
+  toolArgs?: Record<string, unknown>;
+  toolSlug: string;
+}
+
+// Matches MCPService.processToolCallResult, consumed by the chat-plugin
+// executor (store/chat/slices/plugin/actions/exector.ts).
+interface ExecuteActionResult {
+  content: string;
+  state: { content: { text: string; type: string }[]; isError: boolean };
+  success: boolean;
+}
+
 const buildManifest = (
   identifier: string,
   label: string,
@@ -194,6 +214,37 @@ class ComposioService {
       where: { source: 'composio' },
     });
     return rows as unknown as InstalledComposioPlugin[];
+  }
+
+  /**
+   * List a Composio app's actions (Tier 3, egent → Composio API). One endpoint
+   * serves both the pre-connect browse (`useFetchAppTools`) and the post-ACTIVE
+   * tool fetch (`refreshComposioConnectionStatus`) — they were the identical
+   * `getActions` / `listActions` tRPC procedures.
+   */
+  async getActions(appSlug: string): Promise<{ tools: ComposioAction[] }> {
+    const res = await egentFetch(`/v1/composio/tools?appSlug=${encodeURIComponent(appSlug)}`, {
+      headers: { 'Content-Type': 'application/json' },
+      method: 'GET',
+    });
+    if (!res.ok) throw new Error(`composio getActions failed: ${res.status}`);
+    return (await res.json()) as { tools: ComposioAction[] };
+  }
+
+  /**
+   * Execute a Composio action on behalf of the caller's own connection
+   * (Tier 3, egent). The server resolves `connectedAccountId` from the
+   * caller's `user_installed_plugins` row — a client-supplied id is never
+   * trusted, so one user cannot drive another user's connection.
+   */
+  async executeAction(params: ExecuteActionParams): Promise<ExecuteActionResult> {
+    const res = await egentFetch('/v1/composio/tools/execute', {
+      body: JSON.stringify(params),
+      headers: { 'Content-Type': 'application/json' },
+      method: 'POST',
+    });
+    if (!res.ok) throw new Error(`composio executeAction failed: ${res.status}`);
+    return (await res.json()) as ExecuteActionResult;
   }
 }
 

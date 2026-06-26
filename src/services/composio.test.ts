@@ -139,4 +139,46 @@ describe('composioService', () => {
     });
     expect(rows).toHaveLength(1);
   });
+
+  it('getActions lists an app actions via egent', async () => {
+    egentFetchMock.mockResolvedValue(okJson({ tools: [{ name: 'GITHUB_LIST_REPOS' }] }));
+
+    const res = await composioService.getActions('github');
+
+    expect(egentFetchMock).toHaveBeenCalledWith(
+      '/v1/composio/tools?appSlug=github',
+      expect.objectContaining({ method: 'GET' }),
+    );
+    expect(res.tools).toHaveLength(1);
+    expect(res.tools[0].name).toBe('GITHUB_LIST_REPOS');
+  });
+
+  it('executeAction posts to the egent execute endpoint', async () => {
+    egentFetchMock.mockResolvedValue(
+      okJson({
+        content: 'done',
+        state: { content: [{ text: 'done', type: 'text' }], isError: false },
+        success: true,
+      }),
+    );
+
+    const res = await composioService.executeAction({
+      identifier: 'github',
+      toolArgs: { org: 'acme' },
+      toolSlug: 'GITHUB_LIST_REPOS',
+    });
+
+    expect(egentFetchMock).toHaveBeenCalledWith(
+      '/v1/composio/tools/execute',
+      expect.objectContaining({ method: 'POST' }),
+    );
+    const [, init] = egentFetchMock.mock.calls[0];
+    expect(JSON.parse(init.body)).toEqual({
+      identifier: 'github',
+      toolArgs: { org: 'acme' },
+      toolSlug: 'GITHUB_LIST_REPOS',
+    });
+    expect(res.success).toBe(true);
+    expect(res.content).toBe('done');
+  });
 });
