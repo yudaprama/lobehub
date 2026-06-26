@@ -4,6 +4,7 @@ const createNanoId = (size = 12) =>
   customAlphabet('1234567890abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ', size);
 
 const prefixes = {
+  agentSkills: 'skl',
   agents: 'agt',
   documents: 'docs',
   files: 'file',

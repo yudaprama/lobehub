@@ -1,5 +1,4 @@
 import { type LobeChatDatabase } from '@lobechat/database';
-import { AlistClient } from 'alist-kratos-sdk';
 import debug from 'debug';
 
 import { FileModel } from '@/database/models/file';
@@ -10,25 +9,28 @@ import type { FileServiceImpl, PreSignedUpload } from './type';
 const log = debug('lobe-file:alist');
 
 /**
- * Server-side AlistClient that injects Kratos session token via headers.
+ * Server-side AList client that injects Kratos session token via headers.
  * The v2.0.0 SDK uses browser cookies (credentials: "include"), which
- * doesn't work for server-to-server calls. This subclass adds the
- * Authorization header with the Kratos session token.
+ * doesn't work for server-to-server calls. This standalone client
+ * implements the same API surface with explicit token-based auth.
  */
-class ServerAlistClient extends AlistClient {
+class ServerAlistClient {
+  private readonly alistUrl: string;
   private readonly authHeader: string;
+  private basePath: string | null = null;
+  private basePathPromise: Promise<string> | null = null;
 
   constructor(alistUrl: string, kratosSessionToken: string) {
-    super({ alistUrl });
+    this.alistUrl = alistUrl.replace(/\/+$/, '');
     this.authHeader = `kratos:${kratosSessionToken}`;
   }
 
-  protected override async request<T = unknown>(
+  private async request<T = unknown>(
     method: string,
     path: string,
     init?: { body?: BodyInit | null; headers?: Record<string, string> },
   ): Promise<T> {
-    const url = `${this['alistUrl']}${path.startsWith('/') ? path : '/' + path}`;
+    const url = `${this.alistUrl}${path.startsWith('/') ? path : '/' + path}`;
     const res = await fetch(url, {
       method,
       headers: {
@@ -68,6 +70,88 @@ class ServerAlistClient extends AlistClient {
       throw new Error(`[${res.status}] ${code}: ${message}`);
     }
     return body as T;
+  }
+
+  private async ensureBasePath(): Promise<string> {
+    if (this.basePath !== null) return this.basePath;
+    if (this.basePathPromise) return this.basePathPromise;
+    this.basePathPromise = (async () => {
+      const me = await this.me();
+      const bp = me?.data?.base_path;
+      if (!bp) {
+        throw new Error('could not discover BasePath from /api/me');
+      }
+      this.basePath = bp;
+      return bp;
+    })();
+    return this.basePathPromise;
+  }
+
+  private async resolvePath(p: string): Promise<string> {
+    if (p === '/' || p === '') {
+      const basePath = await this.ensureBasePath();
+      return basePath;
+    }
+    return p;
+  }
+
+  async me(): Promise<{ code: number; data: { base_path: string } }> {
+    const res = await this.request<{ code: number; data: { base_path: string } }>('GET', '/api/me');
+    if (res?.data?.base_path) this.basePath = res.data.base_path;
+    return res;
+  }
+
+  async get(path: string): Promise<{ code: number; data: { size: number } }> {
+    const resolved = await this.resolvePath(path);
+    return this.request('POST', '/api/fs/get', {
+      body: JSON.stringify({ path: resolved }),
+    });
+  }
+
+  async download(path: string): Promise<Blob> {
+    const resolved = await this.resolvePath(path);
+    const url = `${this.alistUrl}/d${resolved.startsWith('/') ? '' : '/'}${resolved}`;
+    const res = await fetch(url, {
+      headers: { Authorization: this.authHeader },
+      redirect: 'follow',
+    });
+    if (!res.ok) {
+      throw new Error(`download failed for ${path}`);
+    }
+    return res.blob();
+  }
+
+  async downloadUrl(path: string): Promise<string> {
+    const resolved = await this.resolvePath(path);
+    const url = `${this.alistUrl}/d${resolved.startsWith('/') ? '' : '/'}${resolved}`;
+    const res = await fetch(url, {
+      method: 'GET',
+      headers: { Authorization: this.authHeader },
+      redirect: 'manual',
+    });
+    if (res.status !== 302) {
+      throw new Error(`expected 302 for ${path}, got ${res.status}`);
+    }
+    const location = res.headers.get('Location');
+    if (!location) throw new Error('no Location header');
+    return location;
+  }
+
+  async upload(path: string, file: Blob): Promise<{ code: number }> {
+    const resolved = await this.resolvePath(path);
+    const form = new FormData();
+    form.append('file', file);
+    return this.request('PUT', '/api/fs/form', {
+      body: form,
+      headers: { 'File-Path': encodeURIComponent(resolved) },
+    });
+  }
+
+  async remove(paths: string[]): Promise<{ code: number }> {
+    const resolved = await Promise.all(paths.map((p) => this.resolvePath(p)));
+    return this.request('POST', '/api/fs/remove', {
+      body: JSON.stringify({ names: resolved }),
+    });
   }
 }
 
