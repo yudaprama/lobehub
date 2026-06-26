@@ -78,7 +78,7 @@ export class BriefListActionImpl {
       isLogin === true ? briefKeys.list(isLogin) : null,
       async () => {
         const result = await briefService.listUnresolved();
-        return result.data as BriefItem[];
+        return result.data as unknown as BriefItem[];
       },
       {
         onData: (data) => {
