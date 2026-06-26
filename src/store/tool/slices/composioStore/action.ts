@@ -4,7 +4,8 @@ import { type SWRResponse } from 'swr';
 import useSWR from 'swr';
 
 import { toolKeys } from '@/libs/swr/keys';
-import { lambdaClient, toolsClient } from '@/libs/trpc/client';
+import { toolsClient } from '@/libs/trpc/client';
+import { composioService } from '@/services/composio';
 import { type StoreSetter } from '@/store/types';
 import { setNamespace } from '@/utils/storeDebug';
 
@@ -102,7 +103,7 @@ export class ComposioStoreActionImpl {
     );
 
     try {
-      const response = await lambdaClient.composio.createConnection.mutate({
+      const response = await composioService.createConnection({
         appSlug,
         identifier,
         label,
@@ -167,7 +168,7 @@ export class ComposioStoreActionImpl {
     );
 
     try {
-      const connectionStatus = await lambdaClient.composio.getConnection.query({
+      const connectionStatus = await composioService.getConnection({
         connectedAccountId: server.connectedAccountId,
       });
 
@@ -215,7 +216,7 @@ export class ComposioStoreActionImpl {
         n('refreshComposioConnectionStatus/success'),
       );
 
-      await lambdaClient.composio.updateComposioPlugin.mutate({
+      await composioService.updateComposioPlugin({
         appSlug: server.appSlug,
         authConfigId: server.authConfigId,
         connectedAccountId: server.connectedAccountId,
@@ -257,7 +258,7 @@ export class ComposioStoreActionImpl {
     // Clean up the stale connection on Composio's side (the prior link likely
     // expired). Best-effort — if it's already gone we still mint a fresh one.
     try {
-      await lambdaClient.composio.deleteConnection.mutate({
+      await composioService.deleteConnection({
         connectedAccountId: existing.connectedAccountId,
         identifier,
       });
@@ -288,7 +289,7 @@ export class ComposioStoreActionImpl {
 
     if (server) {
       try {
-        await lambdaClient.composio.deleteConnection.mutate({
+        await composioService.deleteConnection({
           connectedAccountId: server.connectedAccountId,
           identifier,
         });
@@ -313,7 +314,7 @@ export class ComposioStoreActionImpl {
     return useSWR<ComposioServer[]>(
       enabled ? toolKeys.composioConnections() : null,
       async () => {
-        const composioPlugins = await lambdaClient.composio.getComposioPlugins.query();
+        const composioPlugins = await composioService.getComposioPlugins();
 
         if (composioPlugins.length === 0) return [];
 
