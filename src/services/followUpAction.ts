@@ -1,26 +1,22 @@
 import type { FollowUpExtractInput, FollowUpExtractResult } from '@lobechat/types';
 
-import { lambdaClient } from '@/libs/trpc/client';
+import { deferredEmpty } from '@/libs/deferred';
 
 class FollowUpActionService {
   /**
    * Extract chips for a message. Returns null on abort or any failure (silent).
+   *
+   * @deferred(M3) followUpAction.extract → egent runtime. The backend tRPC router
+   * was removed for the MVP TS-backend cut; this silently degrades to "no chips"
+   * until the feature is re-wired to the Go runtime at milestone M3. The method
+   * signature is preserved so callers (store/followUpAction) compile unchanged.
+   * See MVP_ROADMAP.md (Track B).
    */
   async extract(
-    input: FollowUpExtractInput,
-    signal?: AbortSignal,
+    _input: FollowUpExtractInput,
+    _signal?: AbortSignal,
   ): Promise<FollowUpExtractResult | null> {
-    try {
-      const result = await lambdaClient.followUpAction.extract.mutate(input, { signal });
-      return result;
-    } catch (err) {
-      // TRPC wraps DOMException in TRPCClientError, so check both the raw error
-      // and the original signal — silent on any abort flow (timeout, manual clear).
-      if (signal?.aborted) return null;
-      if (err instanceof DOMException && err.name === 'AbortError') return null;
-      console.warn('[FollowUpAction] extract failed', err);
-      return null;
-    }
+    return deferredEmpty('M3', 'followUpAction.extract → egent runtime', null);
   }
 }
 

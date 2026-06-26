@@ -27,7 +27,6 @@ import { deviceRouter } from './device';
 import { documentRouter } from './document';
 import { exporterRouter } from './exporter';
 import { fileRouter } from './file';
-import { followUpActionRouter } from './followUpAction';
 import { generationTopicRouter } from './generationTopic';
 import { homeRouter } from './home';
 import { imageRouter } from './image';
@@ -72,7 +71,6 @@ export const lambdaRouter = router({
   document: documentRouter,
   exporter: exporterRouter,
   file: fileRouter,
-  followUpAction: followUpActionRouter,
   generationTopic: generationTopicRouter,
   group: agentGroupRouter,
   healthcheck: publicProcedure.query(() => "i'm live!"),
