@@ -168,11 +168,22 @@ export class TopicService {
   };
 
   rankTopics = async (limit?: number): Promise<TopicRankItem[]> => {
-    return lambdaClient.topic.rankTopics.query(limit);
+    // Tier 2 aggregate: topics ranked by message count (desc), excluding empty
+    // topics. pREST scopes by user via [[auth.user_id_filters]] inside the
+    // template. Matches TopicModel.rank.
+    const db = await getLobehubQueryClient();
+    const rows = await db.query<TopicRankItem>('lobehub', 'topicsRank', {
+      limit: String(Math.min(limit ?? 10, 50)),
+    });
+    return rows;
   };
 
   getMaxTaskDuration = async (): Promise<number> => {
-    return lambdaClient.topic.getMaxTaskDuration.query();
+    // Tier 2 aggregate: longest completed agent operation (seconds) over the
+    // last year. Mirrors AgentOperationModel.getMaxDurationSeconds.
+    const db = await getLobehubQueryClient();
+    const rows = await db.query<{ seconds: number }>('lobehub', 'agentOperationsMaxDuration', {});
+    return rows[0]?.seconds ?? 0;
   };
 
   getRecentTopics = async (limit?: number): Promise<RecentTopic[]> => {
