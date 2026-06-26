@@ -12,8 +12,6 @@ import { type KnowledgeBaseContentAction } from './slices/content';
 import { createContentSlice } from './slices/content';
 import { type KnowledgeBaseCrudAction } from './slices/crud';
 import { createCrudSlice } from './slices/crud';
-import { type RAGEvalAction } from './slices/ragEval';
-import { createRagEvalSlice } from './slices/ragEval';
 
 //  ===============  Aggregate createStoreFn ============ //
 
@@ -22,14 +20,12 @@ export interface KnowledgeBaseStore
     KnowledgeBaseStoreState,
     KnowledgeBaseCrudAction,
     KnowledgeBaseContentAction,
-    RAGEvalAction,
     ResetableStore {
   // empty
 }
 
 type KnowledgeBaseStoreAction = KnowledgeBaseCrudAction &
   KnowledgeBaseContentAction &
-  RAGEvalAction &
   ResetableStore;
 
 class KnowledgeBaseStoreResetAction extends ResetableStoreAction<KnowledgeBaseStore> {
@@ -43,7 +39,6 @@ const createStore: StateCreator<KnowledgeBaseStore, [['zustand/devtools', never]
   ...flattenActions<KnowledgeBaseStoreAction>([
     createCrudSlice(...parameters),
     createContentSlice(...parameters),
-    createRagEvalSlice(...parameters),
     new KnowledgeBaseStoreResetAction(...parameters),
   ]),
 });
