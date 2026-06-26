@@ -2,7 +2,7 @@ import { type ConnectorToolPermission } from '@/database/schemas';
 import { getActiveWorkspaceId } from '@/business/client/hooks/useActiveWorkspaceId';
 import { egentFetch } from '@/libs/egent/client';
 import { getLobehubQueryClient } from '@/libs/prest/client';
-import { lambdaClient } from '@/libs/trpc/client';
+import { deferredToMilestone } from '@/libs/deferred';
 
 interface ConnectorCredentialsInput {
   apiKey?: string;
@@ -135,9 +135,24 @@ class ConnectorService {
   /**
    * Begin the OAuth authorization-code flow and return the authorize URL.
    */
-  startOAuth = async (id: string): Promise<string> => {
-    const { authorizationUrl } = await lambdaClient.connector.startOAuth.mutate({ id });
-    return authorizationUrl;
+  /**
+   * @deferred(M3) connector.startOAuth → egent MCP OAuth + token refresh. The
+   * generic MCP connector router was removed for the MVP TS-backend cut; OAuth
+   * authorization for custom MCP servers is an M3 feature. Throws so the UI
+   * surfaces the unavailable feature. See MVP_ROADMAP.md (Track B).
+   */
+  startOAuth = async (_id: string): Promise<string> => {
+    return deferredToMilestone('M3', 'connector.startOAuth');
+  };
+
+  /**
+   * @deferred(M3) connector.getRedirectUri → server-derived OAuth redirect URI.
+   * Callers (AddConnectorModal, MCPManifestForm) `.catch()` and fall back to
+   * `${origin}/oauth/connector/callback`, so the M3 stub degrades gracefully —
+   * the displayed URI is the origin-based one until M3 re-wires it.
+   */
+  getRedirectUri = async (): Promise<{ redirectUri: string }> => {
+    return deferredToMilestone('M3', 'connector.getRedirectUri');
   };
 
   delete = async (id: string): Promise<void> => {
@@ -182,8 +197,9 @@ class ConnectorService {
     await db.update('user_connectors', { id }, safePatch as any);
   };
 
-  syncTools = (id: string) => {
-    return lambdaClient.connector.syncTools.mutate({ id });
+  /** @deferred(M3) connector.syncTools → egent MCP server tool sync. */
+  syncTools = async (_id: string): Promise<void> => {
+    return deferredToMilestone('M3', 'connector.syncTools');
   };
 
   /**
@@ -204,21 +220,26 @@ class ConnectorService {
   /**
    * Sync tools from a client-provided list (Lobehub OAuth skills / Composio).
    */
-  syncToolsFromClient = (params: {
-    identifier: string;
-    name: string;
-    sourceType: 'builtin' | 'custom' | 'marketplace';
-    tools: Array<{ description?: string; inputSchema?: Record<string, unknown>; toolName: string }>;
-  }): Promise<{ connectorId: string }> => {
-    return lambdaClient.connector.syncToolsFromClient.mutate(params);
+  /** @deferred(M3) connector.syncToolsFromClient → egent tool sync. */
+  syncToolsFromClient = async (
+    _params: {
+      identifier: string;
+      name: string;
+      sourceType: 'builtin' | 'custom' | 'marketplace';
+      tools: Array<{ description?: string; inputSchema?: Record<string, unknown>; toolName: string }>;
+    },
+  ): Promise<{ connectorId: string }> => {
+    return deferredToMilestone('M3', 'connector.syncToolsFromClient');
   };
 
-  syncBuiltinTool = (identifier: string): Promise<{ connectorId: string }> => {
-    return lambdaClient.connector.syncBuiltinTool.mutate({ identifier });
+  /** @deferred(M3) connector.syncBuiltinTool → egent builtin tool bootstrap. */
+  syncBuiltinTool = async (_identifier: string): Promise<{ connectorId: string }> => {
+    return deferredToMilestone('M3', 'connector.syncBuiltinTool');
   };
 
-  syncPluginTools = (identifier: string): Promise<{ connectorId: string }> => {
-    return lambdaClient.connector.syncPluginTools.mutate({ identifier });
+  /** @deferred(M3) connector.syncPluginTools → egent plugin tool bootstrap. */
+  syncPluginTools = async (_identifier: string): Promise<{ connectorId: string }> => {
+    return deferredToMilestone('M3', 'connector.syncPluginTools');
   };
 
   updateToolPermission = async (

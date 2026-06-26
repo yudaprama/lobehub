@@ -22,10 +22,6 @@ vi.mock('@/libs/egent/client', () => ({
   egentFetch: egentFetchMock,
 }));
 
-vi.mock('@/libs/trpc/client', () => ({
-  lambdaClient: { connector: {} },
-}));
-
 import { connectorService } from './connector';
 
 const okJson = (body: unknown) => ({ json: () => Promise.resolve(body), ok: true, status: 200 });

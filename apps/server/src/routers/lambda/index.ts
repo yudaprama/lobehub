@@ -21,7 +21,6 @@ import { briefRouter } from './brief';
 import { chunkRouter } from './chunk';
 import { composioRouter } from './composio';
 import { configRouter } from './config';
-import { connectorRouter } from './connector';
 import { deviceRouter } from './device';
 import { documentRouter } from './document';
 import { fileRouter } from './file';
@@ -60,7 +59,6 @@ export const lambdaRouter = router({
   apiKey: apiKeyRouter,
   chunk: chunkRouter,
   config: configRouter,
-  connector: connectorRouter,
   device: deviceRouter,
   document: documentRouter,
   file: fileRouter,

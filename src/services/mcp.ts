@@ -9,6 +9,7 @@ import { type PluginManifest } from '@lobehub/market-sdk';
 import { type CallReportRequest } from '@lobehub/market-types';
 import superjson from 'superjson';
 
+import { deferredToMilestone } from '@/libs/deferred';
 import { type MCPToolCallResult } from '@/libs/mcp';
 import { toolsClient } from '@/libs/trpc/client';
 import { ensureElectronIpc } from '@/utils/electron/ipc';
@@ -56,11 +57,11 @@ class MCPService {
       connector.isEnabled &&
       (connector.mcpServerUrl || connector.mcpConnectionType === 'stdio')
     ) {
-      const { lambdaClient } = await import('@/libs/trpc/client');
-      return (await lambdaClient.connector.callTool.mutate(
-        { args, identifier, toolName: apiName },
-        { signal },
-      )) as MCPToolCallResult;
+      // Custom MCP connectors executed server-side via the connector router,
+      // which is deferred to M3 (generic MCP integration). Only connectors with
+      // a real mcpServerUrl / stdio reach here — Composio & Lobehub skills have
+      // no mcpServerUrl and keep the plugin executor path below.
+      return deferredToMilestone('M3', 'connector.callTool');
     }
 
     const installPlugin = pluginSelectors.getInstalledPluginById(identifier)(s);

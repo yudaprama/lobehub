@@ -5,7 +5,7 @@ import { memo, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { ConnectorSourceType } from '@/database/schemas';
-import { lambdaClient } from '@/libs/trpc/client';
+import { connectorService } from '@/services/connector';
 import { useToolStore } from '@/store/tool';
 import { connectorSelectors } from '@/store/tool/slices/connector';
 
@@ -103,8 +103,8 @@ const AddConnectorModal = memo<AddConnectorModalProps>(({ open, onClose, connect
   useEffect(() => {
     if (!open) return;
     let cancelled = false;
-    lambdaClient.connector.getRedirectUri
-      .query()
+    connectorService
+      .getRedirectUri()
       .then((r) => {
         if (!cancelled) setRedirectUri(r.redirectUri);
       })
