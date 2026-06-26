@@ -17,8 +17,11 @@ class TaskTemplateService {
   listDailyRecommend = async (
     _interestKeys: string[],
     _options: { count?: number; locale?: string; refreshSeed?: string } = {},
-  ): Promise<{ data: TaskTemplate[] }> => {
-    return deferredEmpty('M2', 'taskTemplate.listDailyRecommend', { data: [] as TaskTemplate[] });
+  ): Promise<{ data: TaskTemplate[]; success: boolean }> => {
+    return deferredEmpty('M2', 'taskTemplate.listDailyRecommend', {
+      data: [] as TaskTemplate[],
+      success: true,
+    });
   };
 
   recordCreated = async (_templateId: number) => {

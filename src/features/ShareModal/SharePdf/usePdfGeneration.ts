@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react';
 
-import { lambdaQuery } from '@/libs/trpc/client/lambda';
+import { deferredToMilestone } from '@/libs/deferred';
 
 interface PdfGenerationParams {
   content: string;
@@ -19,38 +19,25 @@ interface PdfGenerationState {
 
 export const usePdfGeneration = (): PdfGenerationState => {
   const [pdfData, setPdfData] = useState<string | null>(null);
-  const [filename, setFilename] = useState<string>('chat-export.pdf');
+  const filename = 'chat-export.pdf';
   const [error, setError] = useState<string | null>(null);
 
-  const exportPdfMutation = lambdaQuery.exporter.exportPdf.useMutation();
-
-  const generatePdf = useCallback(
-    async (params: PdfGenerationParams) => {
-      const { content, sessionId, title, topicId } = params;
-
-      // Prevent multiple simultaneous requests only; allow user to re-generate
-      if (exportPdfMutation.isPending) return;
-
-      try {
-        setError(null);
-        setPdfData(null);
-
-        const result = await exportPdfMutation.mutateAsync({
-          content,
-          sessionId,
-          title,
-          topicId,
-        });
-
-        setPdfData(result.pdf);
-        setFilename(result.filename);
-      } catch (error) {
-        console.error('Failed to generate PDF:', error);
-        setError(error instanceof Error ? error.message : 'Failed to generate PDF');
-      }
-    },
-    [exportPdfMutation.mutateAsync],
-  );
+  /**
+   * @deferred(M3) exporter.exportPdf → server-side PDF rendering. The backend
+   * tRPC router was removed for the MVP TS-backend cut; server-side PDF export is
+   * a Node-backend op deferred to M3. The hook shape is preserved so the SharePdf
+   * UI compiles; generating surfaces a "not available" error until re-wired.
+   * See MVP_ROADMAP.md (Track B).
+   */
+  const generatePdf = useCallback(async (_params: PdfGenerationParams) => {
+    try {
+      setError(null);
+      setPdfData(null);
+      deferredToMilestone('M3', 'exporter.exportPdf → server-side PDF export');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'PDF export is not available in this build');
+    }
+  }, []);
 
   const downloadPdf = useCallback(async () => {
     if (!pdfData) return;
@@ -81,9 +68,9 @@ export const usePdfGeneration = (): PdfGenerationState => {
 
   return {
     downloadPdf,
-    error: error || (exportPdfMutation.error?.message ?? null),
+    error,
     generatePdf,
-    loading: exportPdfMutation.isPending,
+    loading: false,
     pdfData,
   };
 };

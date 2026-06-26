@@ -147,7 +147,7 @@ class ChatGroupService {
     const patch: Record<string, unknown> = {};
     if (updates.order !== undefined && updates.order !== null) patch.order = updates.order;
     if (updates.role !== undefined && updates.role !== null) patch.role = updates.role;
-    const [row] = await db.update('chat_groups_agents', { chat_group_id: groupId, agent_id: agentId }, patch as any, { returning: ['*'] as any });
+    const [row] = await db.update('chat_groups_agents', { chat_group_id: groupId, agent_id: agentId }, patch as any);
     return row as unknown as NewChatGroupAgent;
   };
 
