@@ -62,14 +62,6 @@ import {
   LobeAgentStreamings,
 } from '@lobechat/builtin-tool-lobe-agent/client';
 import {
-  LobeDeliveryCheckerInspectors,
-  LobeDeliveryCheckerManifest,
-  LobeDeliveryCheckerPortal,
-  LobeDeliveryCheckerPortalActions,
-  LobeDeliveryCheckerPortalTitle,
-  LobeDeliveryCheckerRenders,
-} from '@lobechat/builtin-tool-lobe-delivery-checker/client';
-import {
   LocalSystemApiName,
   LocalSystemIdentifier,
   LocalSystemInspectors,
@@ -178,10 +170,6 @@ export const registerBuiltinToolSurfaces = (): void => {
     [GroupManagementManifest.identifier]: GroupManagementRenders as Record<string, BuiltinRender>,
     [KnowledgeBaseManifest.identifier]: KnowledgeBaseRenders as Record<string, BuiltinRender>,
     [LobeAgentManifest.identifier]: LobeAgentRenders as Record<string, BuiltinRender>,
-    [LobeDeliveryCheckerManifest.identifier]: LobeDeliveryCheckerRenders as Record<
-      string,
-      BuiltinRender
-    >,
     [LocalSystemManifest.identifier]: LocalSystemRenders as Record<string, BuiltinRender>,
     [MemoryManifest.identifier]: MemoryRenders as Record<string, BuiltinRender>,
     [MessageManifest.identifier]: MessageRenders as Record<string, BuiltinRender>,
@@ -223,10 +211,6 @@ export const registerBuiltinToolSurfaces = (): void => {
     >,
     [KnowledgeBaseManifest.identifier]: KnowledgeBaseInspectors as Record<string, BuiltinInspector>,
     [LobeAgentManifest.identifier]: LobeAgentInspectors as Record<string, BuiltinInspector>,
-    [LobeDeliveryCheckerManifest.identifier]: LobeDeliveryCheckerInspectors as Record<
-      string,
-      BuiltinInspector
-    >,
     [LocalSystemManifest.identifier]: LocalSystemInspectors as Record<string, BuiltinInspector>,
     [MemoryManifest.identifier]: MemoryInspectors as Record<string, BuiltinInspector>,
     [MessageManifest.identifier]: MessageInspectors as Record<string, BuiltinInspector>,
@@ -314,17 +298,11 @@ export const registerBuiltinToolSurfaces = (): void => {
   });
 
   registerBuiltinPortals({
-    actions: {
-      [LobeDeliveryCheckerManifest.identifier]:
-        LobeDeliveryCheckerPortalActions as BuiltinPortalTitle,
-    },
+    actions: {},
     portals: {
-      [LobeDeliveryCheckerManifest.identifier]: LobeDeliveryCheckerPortal as BuiltinPortal,
       [WebBrowsingManifest.identifier]: WebBrowsingPortal as BuiltinPortal,
     },
     titles: {
-      [LobeDeliveryCheckerManifest.identifier]:
-        LobeDeliveryCheckerPortalTitle as BuiltinPortalTitle,
       [WebBrowsingManifest.identifier]: WebBrowsingPortalTitle as BuiltinPortalTitle,
     },
   });

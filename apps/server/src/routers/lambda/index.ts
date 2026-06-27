@@ -40,7 +40,6 @@ import { taskRouter } from './task';
 import { threadRouter } from './thread';
 import { topicRouter } from './topic';
 import { userRouter } from './user';
-import { verifyRouter } from './verify';
 import { videoRouter } from './video';
 import { webBrowsingRouter } from './webBrowsing';
 
@@ -80,7 +79,6 @@ export const lambdaRouter = router({
   thread: threadRouter,
   topic: topicRouter,
   user: userRouter,
-  verify: verifyRouter,
   video: videoRouter,
   webBrowsing: webBrowsingRouter,
   workspace: workspaceRouter,

@@ -21,7 +21,6 @@ import {
   TasksFlattenProcessor,
   ToolCallProcessor,
   ToolMessageReorder,
-  VerifyMessageProcessor,
 } from '../../processors';
 import {
   ActiveTopicDocumentContextInjector,
@@ -404,9 +403,6 @@ export class MessagesEngine {
       new TasksFlattenProcessor(),
       // Task message processing
       new TaskMessageProcessor(),
-      // Verify (delivery-checker) cards: drop empty UI-only ones; surface
-      // auto-repair failure feedback as a user turn for the repair run
-      new VerifyMessageProcessor(),
       // Supervisor role restore
       new SupervisorRoleRestoreProcessor(),
       // Compressed group role transform
